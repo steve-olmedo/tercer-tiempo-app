@@ -1,0 +1,165 @@
+{
+  "entities": {
+    "MatchConfig": {
+      "title": "MatchConfig",
+      "description": "Configuración global del partido de fútbol 7",
+      "type": "object",
+      "properties": {
+        "pitchCost": {
+          "type": "number",
+          "description": "Costo total del alquiler de la cancha"
+        },
+        "depositPaid": {
+          "type": "number",
+          "description": "Monto de la seña previa entregada a la cancha"
+        },
+        "matchTitle": {
+          "type": "string",
+          "description": "Título y horario del partido",
+          "maxLength": 100
+        },
+        "pitchName": {
+          "type": "string",
+          "description": "Nombre del complejo o cancha",
+          "maxLength": 100
+        },
+        "date": {
+          "type": "string",
+          "description": "Fecha del partido en formato YYYY-MM-DD",
+          "maxLength": 20
+        }
+      },
+      "required": ["pitchCost", "depositPaid", "matchTitle"]
+    },
+    "Player": {
+      "title": "Player",
+      "description": "Jugador del grupo con sus saldos y asistencia",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Nombre o apodo del jugador",
+          "maxLength": 80
+        },
+        "isGuest": {
+          "type": "boolean",
+          "description": "Indica si es un invitado temporal"
+        },
+        "initialBalance": {
+          "type": "number",
+          "description": "Saldo o seña previa acumulada"
+        },
+        "playedToday": {
+          "type": "boolean",
+          "description": "Si jugó el partido de esta fecha"
+        },
+        "paidToday": {
+          "type": "number",
+          "description": "Monto abonado hoy"
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "Método de pago (efectivo o mercadopago)",
+          "enum": ["efectivo", "mercadopago"]
+        },
+        "playsNextWeek": {
+          "type": "boolean",
+          "description": "Si está anotado para el próximo viernes"
+        }
+      },
+      "required": ["name", "initialBalance", "playedToday", "paidToday", "paymentMethod", "playsNextWeek"]
+    },
+    "MatchClosingRecord": {
+      "title": "MatchClosingRecord",
+      "description": "Foto histórica del cierre financiero de un viernes",
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string",
+          "description": "Fecha del cierre",
+          "maxLength": 30
+        },
+        "timestamp": {
+          "type": "number",
+          "description": "Timestamp numérico del cierre"
+        },
+        "matchTitle": {
+          "type": "string",
+          "description": "Título del partido cerrado",
+          "maxLength": 100
+        },
+        "pitchCost": {
+          "type": "number",
+          "description": "Costo total de la cancha"
+        },
+        "depositPaid": {
+          "type": "number",
+          "description": "Seña previa"
+        },
+        "costPerPerson": {
+          "type": "number",
+          "description": "Cuota por persona resultante"
+        },
+        "playedCount": {
+          "type": "number",
+          "description": "Cantidad de jugadores que jugaron"
+        },
+        "cashTotal": {
+          "type": "number",
+          "description": "Total recaudado en efectivo"
+        },
+        "mpTotal": {
+          "type": "number",
+          "description": "Total recaudado en MercadoPago"
+        },
+        "totalCollected": {
+          "type": "number",
+          "description": "Total general recaudado hoy"
+        },
+        "playersSnapshot": {
+          "type": "array",
+          "description": "Detalle de los jugadores en este partido"
+        }
+      },
+      "required": ["date", "timestamp", "pitchCost", "costPerPerson", "playedCount", "cashTotal", "mpTotal", "totalCollected"]
+    },
+    "TeamAssignment": {
+      "title": "TeamAssignment",
+      "description": "Asignación colaborativa en tiempo real de los equipos Azul y Naranja",
+      "type": "object",
+      "properties": {
+        "blueTeamIds": {
+          "type": "array",
+          "description": "Lista de IDs de jugadores asignados al equipo azul"
+        },
+        "orangeTeamIds": {
+          "type": "array",
+          "description": "Lista de IDs de jugadores asignados al equipo naranja"
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "Timestamp de la última actualización"
+        }
+      },
+      "required": ["blueTeamIds", "orangeTeamIds"]
+    }
+  },
+  "firestore": {
+    "/config/{configId}": {
+      "schema": "MatchConfig",
+      "description": "Configuración del partido actual"
+    },
+    "/players/{playerId}": {
+      "schema": "Player",
+      "description": "Colección de jugadores y sus saldos"
+    },
+    "/history/{historyId}": {
+      "schema": "MatchClosingRecord",
+      "description": "Historial de cierres financieros semanales"
+    },
+    "/teams/{teamId}": {
+      "schema": "TeamAssignment",
+      "description": "Asignación de equipos en tiempo real sincronizada entre dispositivos"
+    }
+  }
+}

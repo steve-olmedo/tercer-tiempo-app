@@ -104,6 +104,8 @@ export const MatchPosterModal: React.FC<MatchPosterModalProps> = ({
     ctx.textAlign = 'center';
     ctx.fillText('EQUIPO AZUL', colLeftX + colW / 2, boxY + 58);
 
+    const roles = ['ARQ', 'DEF', 'DEF', 'DEF', 'MED', 'DEL', 'DEL'];
+
     // Blue Team Players (Up to 7 slots)
     ctx.textAlign = 'left';
     for (let i = 0; i < 7; i++) {
@@ -120,22 +122,27 @@ export const MatchPosterModal: React.FC<MatchPosterModalProps> = ({
       ctx.stroke();
 
       // Number badge
-      ctx.fillStyle = player ? '#3b82f6' : '#334155';
+      ctx.fillStyle = player ? '#1d4ed8' : '#334155';
       ctx.beginPath();
-      ctx.roundRect(colLeftX + 24, slotY + 36, 68, 68, 12);
+      ctx.roundRect(colLeftX + 24, slotY + 28, 68, 84, 12);
       ctx.fill();
 
       ctx.fillStyle = '#ffffff';
       ctx.font = '800 32px "JetBrains Mono", monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(`${i + 1}`, colLeftX + 58, slotY + 82);
+      ctx.fillText(`${i + 1}`, colLeftX + 58, slotY + 68);
+
+      // Role tag inside number box
+      ctx.fillStyle = '#93c5fd';
+      ctx.font = 'bold 16px "Plus Jakarta Sans", sans-serif';
+      ctx.fillText(roles[i], colLeftX + 58, slotY + 98);
 
       // Player Name
       ctx.textAlign = 'left';
       ctx.fillStyle = player ? '#f8fafc' : '#475569';
       ctx.font = player ? 'bold 34px "Plus Jakarta Sans", sans-serif' : 'italic 28px "Plus Jakarta Sans", sans-serif';
       const displayName = player ? player.name : '(Vacante)';
-      ctx.fillText(displayName, colLeftX + 115, slotY + 82);
+      ctx.fillText(displayName, colLeftX + 115, slotY + 80);
     }
 
     // --- VS BADGE in center ---
@@ -184,22 +191,27 @@ export const MatchPosterModal: React.FC<MatchPosterModalProps> = ({
       ctx.stroke();
 
       // Number badge
-      ctx.fillStyle = player ? '#f97316' : '#44403c';
+      ctx.fillStyle = player ? '#c2410c' : '#44403c';
       ctx.beginPath();
-      ctx.roundRect(colRightX + 24, slotY + 36, 68, 68, 12);
+      ctx.roundRect(colRightX + 24, slotY + 28, 68, 84, 12);
       ctx.fill();
 
       ctx.fillStyle = '#ffffff';
       ctx.font = '800 32px "JetBrains Mono", monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(`${i + 1}`, colRightX + 58, slotY + 82);
+      ctx.fillText(`${i + 1}`, colRightX + 58, slotY + 68);
+
+      // Role tag inside number box
+      ctx.fillStyle = '#fdba74';
+      ctx.font = 'bold 16px "Plus Jakarta Sans", sans-serif';
+      ctx.fillText(roles[i], colRightX + 58, slotY + 98);
 
       // Player Name
       ctx.textAlign = 'left';
       ctx.fillStyle = player ? '#f8fafc' : '#78716c';
       ctx.font = player ? 'bold 34px "Plus Jakarta Sans", sans-serif' : 'italic 28px "Plus Jakarta Sans", sans-serif';
       const displayName = player ? player.name : '(Vacante)';
-      ctx.fillText(displayName, colRightX + 115, slotY + 82);
+      ctx.fillText(displayName, colRightX + 115, slotY + 80);
     }
 
     // Bottom Watermark / Footer

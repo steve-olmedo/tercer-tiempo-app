@@ -1,0 +1,73 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidConfig(data) {
+      return data.pitchCost is number && data.pitchCost >= 0
+        && data.depositPaid is number && data.depositPaid >= 0
+        && data.matchTitle is string && data.matchTitle.size() <= 100;
+    }
+
+    function isValidPlayer(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 80
+        && data.initialBalance is number
+        && data.playedToday is bool
+        && data.paidToday is number && data.paidToday >= 0
+        && data.paymentMethod in ['efectivo', 'mercadopago']
+        && data.playsNextWeek is bool;
+    }
+
+    function isValidHistory(data) {
+      return data.date is string && data.date.size() <= 30
+        && data.timestamp is number
+        && data.pitchCost is number
+        && data.costPerPerson is number
+        && data.playedCount is number
+        && data.cashTotal is number
+        && data.mpTotal is number
+        && data.totalCollected is number;
+    }
+
+    // Public test connection doc
+    match /test/connection {
+      allow read: if true;
+    }
+
+    // Match Configuration
+    match /config/{configId} {
+      allow read: if isValidId(configId);
+      allow create, update: if isValidId(configId) && isValidConfig(request.resource.data);
+      allow delete: if false;
+    }
+
+    // Players Collection
+    match /players/{playerId} {
+      allow read: if isValidId(playerId);
+      allow create, update: if isValidId(playerId) && isValidPlayer(request.resource.data);
+      allow delete: if isValidId(playerId);
+    }
+
+    // History Collection
+    match /history/{historyId} {
+      allow read: if isValidId(historyId);
+      allow create: if isValidId(historyId) && isValidHistory(request.resource.data);
+      allow update, delete: if isValidId(historyId);
+    }
+
+    // Teams Formation Collection (Real-time collaborative drafting)
+    match /teams/{teamId} {
+      allow read: if isValidId(teamId);
+      allow create, update, delete: if isValidId(teamId);
+    }
+  }
+}

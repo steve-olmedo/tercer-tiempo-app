@@ -47,7 +47,7 @@ export const MatchConfigBar: React.FC<MatchConfigBarProps> = ({
               onChange={(e) =>
                 onChangeConfig({ ...config, pitchCost: Math.max(0, Number(e.target.value) || 0) })
               }
-              className="w-full pl-7 pr-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-sm font-mono text-zinc-100 focus:outline-none focus:border-emerald-500/70 focus:ring-1 focus:ring-emerald-500/50 transition-colors"
+              className="w-full pl-7 pr-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-sm font-mono text-zinc-100 focus:outline-none focus:border-green-600 transition-colors"
               placeholder="42000"
             />
           </div>
@@ -72,7 +72,7 @@ export const MatchConfigBar: React.FC<MatchConfigBarProps> = ({
               onChange={(e) =>
                 onChangeConfig({ ...config, depositPaid: Math.max(0, Number(e.target.value) || 0) })
               }
-              className="w-full pl-7 pr-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-sm font-mono text-zinc-100 focus:outline-none focus:border-emerald-500/70 focus:ring-1 focus:ring-emerald-500/50 transition-colors"
+              className="w-full pl-7 pr-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-sm font-mono text-zinc-100 focus:outline-none focus:border-green-600 transition-colors"
               placeholder="10000"
             />
           </div>
@@ -88,7 +88,7 @@ export const MatchConfigBar: React.FC<MatchConfigBarProps> = ({
             type="text"
             value={config.matchTitle}
             onChange={(e) => onChangeConfig({ ...config, matchTitle: e.target.value })}
-            className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-zinc-100 focus:outline-none focus:border-emerald-500/70 transition-colors"
+            className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-zinc-100 focus:outline-none focus:border-green-600 transition-colors"
             placeholder="Viernes 19hs - Señamos"
           />
         </div>
@@ -97,12 +97,12 @@ export const MatchConfigBar: React.FC<MatchConfigBarProps> = ({
         <div className="bg-zinc-950/80 border border-zinc-800/90 rounded-xl p-3 flex flex-col justify-center">
           <div className="flex items-center justify-between text-xs text-zinc-400 mb-1">
             <span className="flex items-center gap-1 font-medium">
-              <Users className="w-3.5 h-3.5 text-emerald-400" />
+              <Users className="w-3.5 h-3.5 text-zinc-300" />
               Cuota de hoy ({playedCount} jugaron)
             </span>
           </div>
           <div className="flex items-baseline justify-between">
-            <div className="text-xl font-bold font-mono text-emerald-400">
+            <div className="text-xl font-bold font-mono text-green-500">
               {formatPesos(costPerPerson)}
               <span className="text-xs font-normal text-zinc-400 ml-1">c/u</span>
             </div>
@@ -123,7 +123,7 @@ export const MatchConfigBar: React.FC<MatchConfigBarProps> = ({
             onClick={onBulkPayExact}
             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-800/70 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700/50 transition-colors"
           >
-            <CheckCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <CheckCheck className="w-3.5 h-3.5 text-green-500" />
             <span>Todos los que jugaron pagaron cuota ({formatPesos(costPerPerson)})</span>
           </button>
           <button

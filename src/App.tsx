@@ -17,6 +17,20 @@ import { WhatsAppImportModal } from './components/WhatsAppImportModal';
 import { WhatsAppPreviewModal } from './components/WhatsAppPreviewModal';
 import { AddPlayerModal } from './components/AddPlayerModal';
 import {
+  seedFirestoreIfEmpty,
+  subscribeToMatchConfig,
+  subscribeToPlayers,
+  subscribeToHistory,
+  subscribeToTeams,
+  saveMatchConfigToCloud,
+  savePlayerToCloud,
+  saveAllPlayersToCloud,
+  deletePlayerFromCloud,
+  saveClosingRecordToCloud,
+  deleteClosingRecordFromCloud,
+  saveTeamsToCloud,
+} from './services/firestoreSync';
+import {
   Search,
   Filter,
   UserPlus,
@@ -75,7 +89,57 @@ export default function App() {
   const [isAddPlayerModalOpen, setIsAddPlayerModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
-  // Save to localStorage
+  const [isCloudReady, setIsCloudReady] = useState(false);
+  const [teams, setTeams] = useState<{ blueTeamIds: string[]; orangeTeamIds: string[] }>({
+    blueTeamIds: [],
+    orangeTeamIds: [],
+  });
+
+  // Firestore Real-Time Subscriptions
+  useEffect(() => {
+    let unsubConfig = () => {};
+    let unsubPlayers = () => {};
+    let unsubHistory = () => {};
+    let unsubTeams = () => {};
+
+    const initCloud = async () => {
+      try {
+        await seedFirestoreIfEmpty();
+        setIsCloudReady(true);
+
+        unsubConfig = subscribeToMatchConfig((cloudConfig) => {
+          setConfig(cloudConfig);
+        });
+
+        unsubPlayers = subscribeToPlayers((cloudPlayers) => {
+          if (cloudPlayers.length > 0) {
+            setPlayers(cloudPlayers);
+          }
+        });
+
+        unsubHistory = subscribeToHistory((cloudHistory) => {
+          setHistory(cloudHistory);
+        });
+
+        unsubTeams = subscribeToTeams((cloudTeams) => {
+          setTeams(cloudTeams);
+        });
+      } catch (err) {
+        console.error('Error connecting to Firestore:', err);
+      }
+    };
+
+    initCloud();
+
+    return () => {
+      unsubConfig();
+      unsubPlayers();
+      unsubHistory();
+      unsubTeams();
+    };
+  }, []);
+
+  // Save to localStorage as fallback
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY_PLAYERS, JSON.stringify(players));
@@ -129,10 +193,12 @@ export default function App() {
     setPlayers((prev) =>
       prev.map((p) => (p.id === updated.id ? updated : p))
     );
+    savePlayerToCloud(updated).catch(() => {});
   };
 
   const handleRemoveGuest = (id: string) => {
     setPlayers((prev) => prev.filter((p) => p.id !== id));
+    deletePlayerFromCloud(id).catch(() => {});
     showToast('Invitado eliminado');
   };
 
@@ -142,40 +208,51 @@ export default function App() {
       id: `p-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
     };
     setPlayers((prev) => [newPlayer, ...prev]);
+    savePlayerToCloud(newPlayer).catch(() => {});
     showToast(`"${newPlayer.name}" agregado a la lista`);
+  };
+
+  const handleConfigChange = (newConfig: MatchConfig) => {
+    setConfig(newConfig);
+    saveMatchConfigToCloud(newConfig).catch(() => {});
+  };
+
+  const handleUpdateTeams = (newTeams: { blueTeamIds: string[]; orangeTeamIds: string[] }) => {
+    setTeams(newTeams);
+    saveTeamsToCloud(newTeams).catch(() => {});
   };
 
   // --- Bulk Actions ---
   const handleBulkPayExact = () => {
-    setPlayers((prev) =>
-      prev.map((p) => {
-        if (!p.playedToday) return p;
-        return {
-          ...p,
-          paidToday: costPerPerson,
-        };
-      })
-    );
+    const updated = players.map((p) => {
+      if (!p.playedToday) return p;
+      return {
+        ...p,
+        paidToday: costPerPerson,
+      };
+    });
+    setPlayers(updated);
+    saveAllPlayersToCloud(updated).catch(() => {});
     showToast(`Marcado pago exacto (${costPerPerson}) para los ${playedCount} jugadores`);
   };
 
   const handleBulkResetPaid = () => {
-    setPlayers((prev) =>
-      prev.map((p) => ({
-        ...p,
-        paidToday: 0,
-      }))
-    );
+    const updated = players.map((p) => ({
+      ...p,
+      paidToday: 0,
+    }));
+    setPlayers(updated);
+    saveAllPlayersToCloud(updated).catch(() => {});
     showToast('Pagos de hoy restablecidos a $0');
   };
 
   const handleSelectAllPlayedForNextWeek = () => {
-    setPlayers((prev) =>
-      prev.map((p) => ({
-        ...p,
-        playsNextWeek: p.playedToday,
-      }))
-    );
+    const updated = players.map((p) => ({
+      ...p,
+      playsNextWeek: p.playedToday,
+    }));
+    setPlayers(updated);
+    saveAllPlayersToCloud(updated).catch(() => {});
     showToast('Los 14 que jugaron hoy quedaron anotados para el próximo viernes');
   };
 
@@ -222,26 +299,28 @@ export default function App() {
     };
 
     setHistory((prev) => [newRecord, ...prev]);
+    saveClosingRecordToCloud(newRecord).catch(() => {});
 
-    // Advance balances for next week: new initialBalance = updatedBalance, paidToday = 0, playedToday = playsNextWeek
-    setPlayers((prev) =>
-      prev.map((p) => {
-        const newBal = p.initialBalance - (p.playedToday ? costPerPerson : 0) + p.paidToday;
-        return {
-          ...p,
-          initialBalance: newBal,
-          paidToday: 0,
-          playedToday: p.playsNextWeek,
-        };
-      })
-    );
+    // Advance balances for next week
+    const advancedPlayers = players.map((p) => {
+      const newBal = p.initialBalance - (p.playedToday ? costPerPerson : 0) + p.paidToday;
+      return {
+        ...p,
+        initialBalance: newBal,
+        paidToday: 0,
+        playedToday: p.playsNextWeek,
+      };
+    });
+    setPlayers(advancedPlayers);
+    saveAllPlayersToCloud(advancedPlayers).catch(() => {});
 
-    showToast('💾 ¡Cierre del viernes registrado! Saldos avanzados para la próxima fecha.');
+    showToast('💾 ¡Cierre del viernes guardado en Firestore y saldos avanzados!');
     setActiveTab('historial');
   };
 
   const handleDeleteHistoryRecord = (id: string) => {
     setHistory((prev) => prev.filter((r) => r.id !== id));
+    deleteClosingRecordFromCloud(id).catch(() => {});
     showToast('Registro eliminado del historial');
   };
 
@@ -349,12 +428,16 @@ export default function App() {
     });
 
     setPlayers(updatedList);
+    saveAllPlayersToCloud(updatedList).catch(() => {});
+    saveMatchConfigToCloud({ ...config, matchTitle: title || config.matchTitle }).catch(() => {});
   };
 
   const handleResetToDefaults = () => {
     if (window.confirm('¿Seguro que deseas reiniciar a los valores base iniciales?')) {
       setPlayers(INITIAL_BASE_PLAYERS);
       setConfig(DEFAULT_MATCH_CONFIG);
+      saveAllPlayersToCloud(INITIAL_BASE_PLAYERS).catch(() => {});
+      saveMatchConfigToCloud(DEFAULT_MATCH_CONFIG).catch(() => {});
       localStorage.removeItem(STORAGE_KEY_PLAYERS);
       localStorage.removeItem(STORAGE_KEY_CONFIG);
       showToast('Valores restablecidos a la lista base');
@@ -386,8 +469,8 @@ export default function App() {
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col pb-28">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-20 right-4 z-50 bg-zinc-900 border border-emerald-500/50 text-emerald-300 px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2.5 text-xs font-semibold animate-in slide-in-from-top duration-200">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+        <div className="fixed top-24 right-4 z-50 bg-zinc-900 border border-zinc-700 text-zinc-200 px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2.5 text-xs font-semibold animate-in slide-in-from-top duration-200">
+          <CheckCircle2 className="w-4 h-4 text-green-500" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -406,14 +489,27 @@ export default function App() {
         onOpenShareModal={() => setIsShareModalOpen(true)}
       />
 
+      {/* Cloud Status subtle pill under header */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-2 w-full flex items-center justify-between text-[11px] text-zinc-500">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          <span className="font-medium text-zinc-400">
+            {isCloudReady ? 'Base de datos en la nube (Firestore activa)' : 'Conectando con Firestore...'}
+          </span>
+        </div>
+        <span className="hidden sm:inline text-zinc-600">
+          Los cambios se sincronizan en vivo entre celulares
+        </span>
+      </div>
+
       {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-1">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 w-full flex-1">
         {activeTab === 'finanzas' ? (
           <div className="space-y-6">
             {/* Match Configuration Card */}
             <MatchConfigBar
               config={config}
-              onChangeConfig={setConfig}
+              onChangeConfig={handleConfigChange}
               playedCount={playedCount}
               costPerPerson={costPerPerson}
               onBulkPayExact={handleBulkPayExact}
@@ -551,6 +647,8 @@ export default function App() {
           <TeamBuilder
             players={players}
             config={config}
+            teams={teams}
+            onUpdateTeams={handleUpdateTeams}
             onUpdatePlayer={handleUpdatePlayer}
           />
         ) : (

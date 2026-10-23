@@ -1,13 +1,13 @@
 import React from 'react';
 import { 
-  Users, 
   DollarSign, 
+  Users, 
+  Calendar, 
+  Share2, 
   ClipboardPaste, 
   RotateCcw, 
   Sparkles,
-  ShieldAlert,
-  Calendar,
-  CheckCircle2
+  UserPlus
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -36,130 +36,126 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenShareModal,
 }) => {
   return (
-    <header className="border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md sticky top-0 z-40">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 gap-3">
-          {/* Logo & Brand */}
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-emerald-400 font-bold text-lg shadow-sm">
+    <header className="border-b border-zinc-800 bg-zinc-950/95 backdrop-blur-md sticky top-0 z-40">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        {/* ROW 1: Pelota y Tercer Tiempo (Top Line) */}
+        <div className="flex items-center justify-between h-14 border-b border-zinc-800/60 gap-2">
+          {/* Brand: Pelota + Tercer Tiempo */}
+          <div className="flex items-center gap-2.5">
+            <span className="text-xl leading-none select-none" role="img" aria-label="pelota">
               ⚽
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base sm:text-lg font-bold tracking-tight text-white">
-                  El Tercer Tiempo
-                </h1>
-                <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-zinc-800 text-zinc-300 border border-zinc-700/60 uppercase tracking-wider">
-                  Fútbol 7
-                </span>
-              </div>
-              <p className="text-xs text-zinc-400 hidden sm:block">
-                Organización financiera, arqueo de caja y armado de equipos
-              </p>
+            </span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-base sm:text-lg font-black tracking-tight text-white uppercase">
+                Tercer Tiempo
+              </span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 tracking-wider">
+                F7
+              </span>
             </div>
           </div>
 
-          {/* Nav Tabs */}
-          <div className="flex items-center bg-zinc-900/90 border border-zinc-800 p-1 rounded-xl">
+          {/* Quick Utility Actions in Top Row */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <button
+              onClick={onOpenShareModal}
+              title="Compartir enlace con el grupo"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-700/80 transition-colors"
+            >
+              <Share2 className="w-3.5 h-3.5 text-zinc-300" />
+              <span>Compartir</span>
+            </button>
+
+            <button
+              onClick={onOpenAddPlayerModal}
+              title="Sumar jugador o invitado"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-green-700 hover:bg-green-600 text-white transition-colors shadow-sm"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span className="hidden xs:inline">+ Invitado</span>
+            </button>
+
+            <button
+              onClick={onResetToDefaults}
+              title="Restablecer valores"
+              className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/80 transition-colors"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        {/* ROW 2: Tabs (Finanzas, Equipos, Historial) y demás opciones abajo */}
+        <div className="flex items-center justify-between py-2 overflow-x-auto no-scrollbar gap-2">
+          {/* Main Navigation Tabs */}
+          <div className="flex items-center gap-1 bg-zinc-900/90 p-1 rounded-xl border border-zinc-800/80 shrink-0">
             <button
               onClick={() => setActiveTab('finanzas')}
-              className={`flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
                 activeTab === 'finanzas'
-                  ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700/80'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+                  ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700'
+                  : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              <DollarSign className="w-4 h-4 text-emerald-400" />
+              <DollarSign className="w-3.5 h-3.5 text-green-500" />
               <span>Finanzas</span>
-              <span className={`text-[11px] px-1.5 py-0.2 rounded-md ${
-                playedCount === 14 
-                  ? 'bg-emerald-500/20 text-emerald-300' 
-                  : 'bg-zinc-800 text-zinc-400'
-              }`}>
+              <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-zinc-950 text-zinc-400 ml-0.5">
                 {playedCount}
               </span>
             </button>
 
             <button
               onClick={() => setActiveTab('equipos')}
-              className={`flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
                 activeTab === 'equipos'
-                  ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700/80'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+                  ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700'
+                  : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              <Users className="w-4 h-4 text-blue-400" />
+              <Users className="w-3.5 h-3.5 text-blue-400" />
               <span>Equipos</span>
-              <span className={`text-[11px] px-1.5 py-0.2 rounded-md ${
-                nextWeekCount === 14 
-                  ? 'bg-emerald-500/20 text-emerald-300' 
-                  : 'bg-zinc-800 text-zinc-400'
-              }`}>
+              <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-zinc-950 text-zinc-400 ml-0.5">
                 {nextWeekCount}/14
               </span>
             </button>
 
             <button
               onClick={() => setActiveTab('historial')}
-              className={`flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
                 activeTab === 'historial'
-                  ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700/80'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
+                  ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700'
+                  : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
-              <Calendar className="w-4 h-4 text-amber-400" />
+              <Calendar className="w-3.5 h-3.5 text-amber-500" />
               <span>Historial</span>
               {historyCount > 0 && (
-                <span className="text-[11px] px-1.5 py-0.2 rounded-md bg-zinc-800 text-zinc-400">
+                <span className="text-[10px] font-mono px-1 py-0.2 rounded bg-zinc-950 text-zinc-400 ml-0.5">
                   {historyCount}
                 </span>
               )}
             </button>
           </div>
 
-          {/* Quick Utility Actions */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Quick auxiliary options (Pegar WA & Lista de hoy) */}
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
-              onClick={onOpenShareModal}
-              title="Compartir link público con el equipo"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 transition-colors"
+              onClick={onOpenImportModal}
+              title="Pegar lista de WhatsApp"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-zinc-300 hover:text-white bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors"
             >
-              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="hidden sm:inline">Compartir</span>
+              <ClipboardPaste className="w-3.5 h-3.5 text-zinc-400" />
+              <span className="hidden sm:inline">Pegar WhatsApp</span>
+              <span className="sm:hidden">Pegar</span>
             </button>
 
             <button
               onClick={onLoadTodayReference}
-              title="Cargar la lista de referencia con los saldos enviados hoy"
-              className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-zinc-900 text-zinc-300 border border-zinc-800 hover:bg-zinc-800 transition-colors"
+              title="Cargar la lista y saldos de referencia de hoy"
+              className="hidden md:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 transition-colors"
             >
+              <Sparkles className="w-3 h-3 text-zinc-500" />
               <span>Lista de hoy</span>
-            </button>
-
-            <button
-              onClick={onOpenImportModal}
-              title="Pegar texto de WhatsApp"
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-zinc-900 text-zinc-200 border border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800 transition-colors"
-            >
-              <ClipboardPaste className="w-3.5 h-3.5 text-zinc-400" />
-              <span className="hidden md:inline">Pegar WA</span>
-            </button>
-
-            <button
-              onClick={onOpenAddPlayerModal}
-              title="Sumar jugador o invitado"
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-zinc-100 text-zinc-900 hover:bg-white transition-colors"
-            >
-              <span className="font-bold text-sm leading-none">+</span>
-              <span className="hidden sm:inline">Invitado</span>
-            </button>
-
-            <button
-              onClick={onResetToDefaults}
-              title="Restablecer valores por defecto"
-              className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/80 border border-transparent hover:border-zinc-700 transition-colors"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>

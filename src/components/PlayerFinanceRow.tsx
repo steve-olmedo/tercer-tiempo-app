@@ -92,11 +92,11 @@ export const PlayerFinanceRow: React.FC<PlayerFinanceRowProps> = ({
           <div className="flex items-center gap-2 text-xs">
             <span className="text-zinc-500 text-[11px]">Saldo anterior:</span>
             <span
-              className={`font-mono text-xs font-medium ${
+              className={`font-mono text-xs font-semibold ${
                 player.initialBalance > 0
-                  ? 'text-emerald-400'
+                  ? 'text-green-500'
                   : player.initialBalance < 0
-                  ? 'text-rose-400'
+                  ? 'text-red-400'
                   : 'text-zinc-400'
               }`}
             >
@@ -115,17 +115,17 @@ export const PlayerFinanceRow: React.FC<PlayerFinanceRowProps> = ({
               type="checkbox"
               checked={player.playedToday}
               onChange={(e) => handlePlayedChange(e.target.checked)}
-              className="w-4 h-4 rounded border-zinc-700 bg-zinc-950 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-zinc-900 cursor-pointer accent-emerald-500"
+              className="w-4 h-4 rounded border-zinc-700 bg-zinc-950 text-green-600 focus:ring-green-600 cursor-pointer accent-green-600"
             />
             <span className="text-xs font-medium text-zinc-300 md:hidden">
               Jugó hoy
             </span>
           </label>
           <span
-            className={`hidden md:inline-block text-[11px] font-mono px-2 py-0.5 rounded ${
+            className={`hidden md:inline-block text-[11px] font-mono px-2 py-0.5 rounded font-semibold ${
               player.playedToday
-                ? 'bg-emerald-500/15 text-emerald-300 font-semibold'
-                : 'bg-zinc-800 text-zinc-500'
+                ? 'bg-zinc-800 text-green-400 border border-zinc-700'
+                : 'bg-zinc-900 text-zinc-500'
             }`}
           >
             {player.playedToday ? `-${formatPesos(costPerPerson)}` : '$0'}
@@ -145,14 +145,14 @@ export const PlayerFinanceRow: React.FC<PlayerFinanceRowProps> = ({
               value={player.paidToday === 0 ? '' : player.paidToday}
               onChange={(e) => handlePaidChange(Number(e.target.value) || 0)}
               placeholder="0"
-              className="w-full pl-6 pr-2 py-1.5 bg-zinc-950 border border-zinc-800 rounded-lg text-xs font-mono text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/70"
+              className="w-full pl-6 pr-2 py-1.5 bg-zinc-950 border border-zinc-800 rounded-lg text-xs font-mono text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-green-600"
             />
           </div>
           {player.playedToday && (
             <button
               onClick={handlePayExactMatch}
               title={`Marcar cuota exacta: ${formatPesos(costPerPerson)}`}
-              className="px-1.5 py-1 text-[10px] font-mono rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors border border-zinc-700/60"
+              className="px-1.5 py-1 text-[10px] font-mono rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors border border-zinc-700"
             >
               Exacto
             </button>
@@ -163,23 +163,23 @@ export const PlayerFinanceRow: React.FC<PlayerFinanceRowProps> = ({
         <div>
           <button
             onClick={handlePaymentMethodToggle}
-            className={`flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors border w-full sm:w-auto ${
+            className={`flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors border w-full sm:w-auto ${
               player.paymentMethod === 'mercadopago'
-                ? 'bg-sky-950/40 border-sky-800/60 text-sky-300 hover:bg-sky-900/50'
-                : 'bg-emerald-950/40 border-emerald-800/60 text-emerald-300 hover:bg-emerald-900/50'
+                ? 'bg-zinc-900 border-blue-900/80 text-blue-300 hover:bg-blue-950/40'
+                : 'bg-zinc-900 border-green-900/80 text-green-300 hover:bg-green-950/40'
             }`}
-            title={`Método de pago: ${
+            title={`Método: ${
               player.paymentMethod === 'mercadopago' ? 'MercadoPago' : 'Efectivo'
-            } (click para cambiar)`}
+            }`}
           >
             {player.paymentMethod === 'mercadopago' ? (
               <>
-                <Smartphone className="w-3.5 h-3.5 text-sky-400" />
+                <Smartphone className="w-3.5 h-3.5 text-blue-400" />
                 <span>MP</span>
               </>
             ) : (
               <>
-                <Banknote className="w-3.5 h-3.5 text-emerald-400" />
+                <Banknote className="w-3.5 h-3.5 text-green-400" />
                 <span>Efectivo</span>
               </>
             )}
@@ -193,7 +193,7 @@ export const PlayerFinanceRow: React.FC<PlayerFinanceRowProps> = ({
               type="checkbox"
               checked={player.playsNextWeek}
               onChange={(e) => handlePlaysNextWeekChange(e.target.checked)}
-              className="w-4 h-4 rounded border-zinc-700 bg-zinc-950 text-blue-500 focus:ring-blue-500 focus:ring-offset-zinc-900 cursor-pointer accent-blue-500"
+              className="w-4 h-4 rounded border-zinc-700 bg-zinc-950 text-blue-600 cursor-pointer accent-blue-600"
             />
             <span className="text-xs font-medium text-zinc-300 md:hidden">
               Prox. Viernes
@@ -202,8 +202,8 @@ export const PlayerFinanceRow: React.FC<PlayerFinanceRowProps> = ({
           <span
             className={`hidden md:inline-flex text-[11px] px-2 py-0.5 rounded font-medium ${
               player.playsNextWeek
-                ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                : 'bg-zinc-800/50 text-zinc-500 border border-transparent'
+                ? 'bg-zinc-800 text-zinc-200 border border-zinc-700'
+                : 'text-zinc-600'
             }`}
           >
             {player.playsNextWeek ? 'Confirmado' : 'No juega'}
@@ -220,15 +220,15 @@ export const PlayerFinanceRow: React.FC<PlayerFinanceRowProps> = ({
             <span
               className={`font-mono text-sm font-bold block ${
                 updatedBalance > 0
-                  ? 'text-emerald-400'
+                  ? 'text-green-500'
                   : updatedBalance < 0
-                  ? 'text-rose-400'
+                  ? 'text-red-400'
                   : 'text-zinc-400'
               }`}
             >
               {formatPesos(updatedBalance)}
             </span>
-            <span className="text-[10px] text-zinc-500 uppercase tracking-wider block">
+            <span className="text-[10px] text-zinc-500 uppercase tracking-wider block font-semibold">
               {updatedBalance > 0
                 ? 'A favor'
                 : updatedBalance < 0

@@ -168,14 +168,14 @@ export const CashClosingBar: React.FC<CashClosingBarProps> = ({
 
             {/* Efectivo en mano */}
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-emerald-950/60 border border-emerald-800/70 flex items-center justify-center text-emerald-400">
+              <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-green-500">
                 <Banknote className="w-4 h-4" />
               </div>
               <div>
                 <span className="text-[10px] text-zinc-400 block leading-none font-medium">
                   Efectivo en mano
                 </span>
-                <span className="text-sm font-bold font-mono text-emerald-400">
+                <span className="text-sm font-bold font-mono text-green-500">
                   {formatPesos(cashTotal)}
                 </span>
               </div>
@@ -183,14 +183,14 @@ export const CashClosingBar: React.FC<CashClosingBarProps> = ({
 
             {/* MercadoPago */}
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-sky-950/60 border border-sky-800/70 flex items-center justify-center text-sky-400">
+              <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-blue-400">
                 <Smartphone className="w-4 h-4" />
               </div>
               <div>
                 <span className="text-[10px] text-zinc-400 block leading-none font-medium">
                   MercadoPago
                 </span>
-                <span className="text-sm font-bold font-mono text-sky-400">
+                <span className="text-sm font-bold font-mono text-blue-400">
                   {formatPesos(mpTotal)}
                 </span>
               </div>
@@ -221,7 +221,7 @@ export const CashClosingBar: React.FC<CashClosingBarProps> = ({
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <button
               onClick={onRecordClosing}
-              className="px-3 py-2 rounded-xl text-xs font-semibold text-emerald-300 hover:text-white bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/60 transition-colors flex items-center gap-1.5"
+              className="px-3 py-2 rounded-xl text-xs font-semibold text-zinc-200 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 transition-colors flex items-center gap-1.5"
               title="Guardar una foto histórica del cierre de este viernes en el historial y exportar a Sheets/Excel"
             >
               <span>💾</span>
@@ -238,17 +238,17 @@ export const CashClosingBar: React.FC<CashClosingBarProps> = ({
 
             <button
               onClick={handleCopyWhatsApp}
-              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-emerald-500 hover:bg-emerald-400 text-zinc-950 transition-all shadow-lg shadow-emerald-950/50"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-green-700 hover:bg-green-600 text-white transition-all shadow-md"
             >
               {copied ? (
                 <>
-                  <Check className="w-4 h-4 text-zinc-950 stroke-[2.5]" />
+                  <Check className="w-4 h-4 text-white stroke-[2.5]" />
                   <span>¡Copiado!</span>
                 </>
               ) : (
                 <>
-                  <Share2 className="w-4 h-4 text-zinc-950" />
-                  <span>Copiar para WhatsApp</span>
+                  <Share2 className="w-4 h-4 text-white" />
+                  <span>Copiar WhatsApp</span>
                 </>
               )}
             </button>

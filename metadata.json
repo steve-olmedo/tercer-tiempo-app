@@ -2,5 +2,7 @@
   "name": "El Tercer Tiempo - Gestión de Fulbito",
   "description": "App para la organización financiera, arqueo de caja y armado de equipos de fútbol 7 semanal.",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }
