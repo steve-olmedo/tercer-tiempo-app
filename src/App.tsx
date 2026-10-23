@@ -97,39 +97,36 @@ export default function App() {
 
   // Firestore Real-Time Subscriptions
   useEffect(() => {
-    let unsubConfig = () => {};
-    let unsubPlayers = () => {};
-    let unsubHistory = () => {};
-    let unsubTeams = () => {};
+    // 1. Immediately attach real-time snapshot listeners
+    const unsubConfig = subscribeToMatchConfig((cloudConfig) => {
+      setConfig(cloudConfig);
+      setIsCloudReady(true);
+    });
 
-    const initCloud = async () => {
-      try {
-        await seedFirestoreIfEmpty();
+    const unsubPlayers = subscribeToPlayers((cloudPlayers) => {
+      if (cloudPlayers.length > 0) {
+        setPlayers(cloudPlayers);
         setIsCloudReady(true);
-
-        unsubConfig = subscribeToMatchConfig((cloudConfig) => {
-          setConfig(cloudConfig);
-        });
-
-        unsubPlayers = subscribeToPlayers((cloudPlayers) => {
-          if (cloudPlayers.length > 0) {
-            setPlayers(cloudPlayers);
-          }
-        });
-
-        unsubHistory = subscribeToHistory((cloudHistory) => {
-          setHistory(cloudHistory);
-        });
-
-        unsubTeams = subscribeToTeams((cloudTeams) => {
-          setTeams(cloudTeams);
-        });
-      } catch (err) {
-        console.error('Error connecting to Firestore:', err);
       }
-    };
+    });
 
-    initCloud();
+    const unsubHistory = subscribeToHistory((cloudHistory) => {
+      setHistory(cloudHistory);
+    });
+
+    const unsubTeams = subscribeToTeams((cloudTeams) => {
+      setTeams(cloudTeams);
+    });
+
+    // 2. In background, verify if database needs initial seeding
+    seedFirestoreIfEmpty()
+      .then(() => {
+        setIsCloudReady(true);
+      })
+      .catch((err) => {
+        console.warn('Firestore initial check:', err);
+        setIsCloudReady(true);
+      });
 
     return () => {
       unsubConfig();
@@ -492,13 +489,13 @@ export default function App() {
       {/* Cloud Status subtle pill under header */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-2 w-full flex items-center justify-between text-[11px] text-zinc-500">
         <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span className="font-medium text-zinc-400">
-            {isCloudReady ? 'Base de datos en la nube (Firestore activa)' : 'Conectando con Firestore...'}
+          <span className={`w-2 h-2 rounded-full ${isCloudReady ? 'bg-emerald-500' : 'bg-amber-400 animate-ping'}`} />
+          <span className="font-medium text-zinc-300">
+            {isCloudReady ? 'Base en la nube conectada (Sincronización en vivo)' : 'Conectando con Firestore...'}
           </span>
         </div>
-        <span className="hidden sm:inline text-zinc-600">
-          Los cambios se sincronizan en vivo entre celulares
+        <span className="hidden sm:inline text-zinc-500">
+          Los cambios se sincronizan en simultáneo entre dispositivos
         </span>
       </div>
 

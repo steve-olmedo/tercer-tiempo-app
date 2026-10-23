@@ -40,7 +40,11 @@ export async function seedFirestoreIfEmpty(): Promise<boolean> {
     }
     return false;
   } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, 'seeding');
+    try {
+      handleFirestoreError(error, OperationType.WRITE, 'seeding');
+    } catch (e) {
+      console.warn('Seeding note:', e);
+    }
     return false;
   }
 }
@@ -59,7 +63,11 @@ export function subscribeToMatchConfig(
       }
     },
     (error) => {
-      handleFirestoreError(error, OperationType.GET, CONFIG_DOC_PATH);
+      try {
+        handleFirestoreError(error, OperationType.GET, CONFIG_DOC_PATH);
+      } catch (e) {
+        console.error('MatchConfig subscription error:', e);
+      }
     }
   );
 }
@@ -78,11 +86,22 @@ export function subscribeToPlayers(
         list.push({ id: d.id, ...d.data() } as Player);
       });
       if (list.length > 0) {
+        // Sort numerically by ID so 1..20 stay in exact Friday list order
+        list.sort((a, b) => {
+          const numA = Number(a.id);
+          const numB = Number(b.id);
+          if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+          return a.name.localeCompare(b.name);
+        });
         onUpdate(list);
       }
     },
     (error) => {
-      handleFirestoreError(error, OperationType.GET, PLAYERS_COLL_PATH);
+      try {
+        handleFirestoreError(error, OperationType.GET, PLAYERS_COLL_PATH);
+      } catch (e) {
+        console.error('Players subscription error:', e);
+      }
     }
   );
 }
@@ -105,7 +124,11 @@ export function subscribeToHistory(
       onUpdate(list);
     },
     (error) => {
-      handleFirestoreError(error, OperationType.GET, HISTORY_COLL_PATH);
+      try {
+        handleFirestoreError(error, OperationType.GET, HISTORY_COLL_PATH);
+      } catch (e) {
+        console.error('History subscription error:', e);
+      }
     }
   );
 }
@@ -203,7 +226,11 @@ export function subscribeToTeams(
       }
     },
     (error) => {
-      handleFirestoreError(error, OperationType.GET, TEAMS_DOC_PATH);
+      try {
+        handleFirestoreError(error, OperationType.GET, TEAMS_DOC_PATH);
+      } catch (e) {
+        console.error('Teams subscription error:', e);
+      }
     }
   );
 }
