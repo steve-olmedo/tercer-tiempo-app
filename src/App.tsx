@@ -5,7 +5,14 @@ import {
   DEFAULT_MATCH_CONFIG,
   TODAY_REFERENCE_TEXT,
 } from './data/defaultPlayers';
-import { parseWhatsAppList, ParsedWhatsAppItem } from './utils/whatsappHelpers';
+import {
+  parseWhatsAppList,
+  ParsedWhatsAppItem,
+  calculateCostPerPerson,
+  calculateUpdatedBalance,
+  calculateAmountDueToday,
+} from './utils/whatsappHelpers';
+import { formatPesos } from './utils/formatters';
 import { Header } from './components/Header';
 import { MatchConfigBar } from './components/MatchConfigBar';
 import { PlayerFinanceRow } from './components/PlayerFinanceRow';
@@ -25,6 +32,7 @@ import {
   saveMatchConfigToCloud,
   savePlayerToCloud,
   saveAllPlayersToCloud,
+  replacePlayersInCloud,
   deletePlayerFromCloud,
   saveClosingRecordToCloud,
   deleteClosingRecordFromCloud,
@@ -104,10 +112,8 @@ export default function App() {
     });
 
     const unsubPlayers = subscribeToPlayers((cloudPlayers) => {
-      if (cloudPlayers.length > 0) {
-        setPlayers(cloudPlayers);
-        setIsCloudReady(true);
-      }
+      setPlayers(cloudPlayers);
+      setIsCloudReady(true);
     });
 
     const unsubHistory = subscribeToHistory((cloudHistory) => {
@@ -181,8 +187,7 @@ export default function App() {
   const nextWeekCount = nextWeekPlayers.length;
 
   const costPerPerson = useMemo(() => {
-    if (playedCount === 0) return 0;
-    return Math.round(config.pitchCost / playedCount);
+    return calculateCostPerPerson(config.pitchCost, playedCount);
   }, [config.pitchCost, playedCount]);
 
   // --- Player handlers ---
@@ -203,8 +208,10 @@ export default function App() {
     const newPlayer: Player = {
       ...newPlayerData,
       id: `p-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      orderIndex: players.length,
+      vuelto: 0,
     };
-    setPlayers((prev) => [newPlayer, ...prev]);
+    setPlayers((prev) => [...prev, newPlayer]);
     savePlayerToCloud(newPlayer).catch(() => {});
     showToast(`"${newPlayer.name}" agregado a la lista`);
   };
@@ -225,22 +232,24 @@ export default function App() {
       if (!p.playedToday) return p;
       return {
         ...p,
-        paidToday: costPerPerson,
+        paidToday: calculateAmountDueToday(p, costPerPerson),
+        vuelto: 0,
       };
     });
     setPlayers(updated);
     saveAllPlayersToCloud(updated).catch(() => {});
-    showToast(`Marcado pago exacto (${costPerPerson}) para los ${playedCount} jugadores`);
+    showToast(`Marcado pago exacto (${formatPesos(costPerPerson)} - seña) para los ${playedCount} que jugaron`);
   };
 
   const handleBulkResetPaid = () => {
     const updated = players.map((p) => ({
       ...p,
       paidToday: 0,
+      vuelto: 0,
     }));
     setPlayers(updated);
     saveAllPlayersToCloud(updated).catch(() => {});
-    showToast('Pagos de hoy restablecidos a $0');
+    showToast('Pagos y vueltos de hoy restablecidos a $0');
   };
 
   const handleSelectAllPlayedForNextWeek = () => {
@@ -256,17 +265,23 @@ export default function App() {
   // --- Record Friday Closing Snapshot ---
   const handleRecordCurrentMatch = () => {
     const cashTotal = players.reduce(
-      (acc, p) => (p.paymentMethod === 'efectivo' ? acc + p.paidToday : acc),
+      (acc, p) => (p.paymentMethod === 'efectivo' ? acc + (p.paidToday - (p.vuelto || 0)) : acc),
       0
     );
     const mpTotal = players.reduce(
-      (acc, p) => (p.paymentMethod === 'mercadopago' ? acc + p.paidToday : acc),
+      (acc, p) => (p.paymentMethod === 'mercadopago' ? acc + (p.paidToday - (p.vuelto || 0)) : acc),
       0
     );
     const totalCollected = cashTotal + mpTotal;
+    const courtCost = config.pitchCost || 96000;
+    const currentFondo = config.fondoRecaudador ?? config.fondoEmi ?? 0;
+    const shortfall = Math.max(0, courtCost - totalCollected);
+    const surplus = Math.max(0, totalCollected - courtCost);
+    const updatedFondo = currentFondo + surplus - shortfall;
 
     const snapshots: PlayerMatchSnapshot[] = players.map((p) => {
-      const updated = p.initialBalance - (p.playedToday ? costPerPerson : 0) + p.paidToday;
+      const netPaid = (p.paidToday || 0) - (p.vuelto || 0);
+      const updated = calculateUpdatedBalance(p, costPerPerson);
       return {
         playerId: p.id,
         name: p.name,
@@ -274,6 +289,8 @@ export default function App() {
         initialBalance: p.initialBalance,
         playedToday: p.playedToday,
         paidToday: p.paidToday,
+        vuelto: p.vuelto || 0,
+        netPaid,
         paymentMethod: p.paymentMethod,
         playsNextWeek: p.playsNextWeek,
         updatedBalance: updated,
@@ -284,9 +301,13 @@ export default function App() {
       id: `closing-${Date.now()}`,
       date: config.date || new Date().toLocaleDateString('es-AR'),
       timestamp: Date.now(),
-      matchTitle: config.matchTitle || 'Viernes 19hs - Señamos',
+      matchTitle: config.matchTitle || 'Partido de los Viernes',
       pitchCost: config.pitchCost,
       depositPaid: config.depositPaid,
+      fondoRecaudador: currentFondo,
+      fondoEmi: currentFondo,
+      shortfallFromFund: shortfall,
+      surplusToFund: surplus,
       costPerPerson,
       playedCount,
       cashTotal,
@@ -298,13 +319,23 @@ export default function App() {
     setHistory((prev) => [newRecord, ...prev]);
     saveClosingRecordToCloud(newRecord).catch(() => {});
 
+    // Advance Fondo Recaudador in MatchConfig
+    const updatedConfig: MatchConfig = {
+      ...config,
+      fondoRecaudador: updatedFondo,
+      fondoEmi: updatedFondo,
+    };
+    setConfig(updatedConfig);
+    saveMatchConfigToCloud(updatedConfig).catch(() => {});
+
     // Advance balances for next week
     const advancedPlayers = players.map((p) => {
-      const newBal = p.initialBalance - (p.playedToday ? costPerPerson : 0) + p.paidToday;
+      const newBal = calculateUpdatedBalance(p, costPerPerson);
       return {
         ...p,
         initialBalance: newBal,
         paidToday: 0,
+        vuelto: 0,
         playedToday: p.playsNextWeek,
       };
     });
@@ -328,31 +359,44 @@ export default function App() {
     showToast('¡Lista de hoy cargada con éxito!');
   };
 
-  // Helper to apply parsed items to players
+  // Helper to apply parsed items to players (strictly ordered, defaults playedToday & playsNextWeek to true)
   const applyParsedData = (
     title: string,
     playing: ParsedWhatsAppItem[],
     senas: ParsedWhatsAppItem[]
   ) => {
+    const newTitle = title || config.matchTitle || 'Viernes 19hs - Señamos';
     setConfig((prev) => ({
       ...prev,
-      matchTitle: title || prev.matchTitle,
+      matchTitle: newTitle,
     }));
 
-    // Reconstruct list
+    // Reconstruct list in exact WhatsApp pasted order
     const updatedList: Player[] = [];
     const usedIds = new Set<string>();
 
     const normalize = (str: string) =>
-      str.toLowerCase().replace(/[\s\-_]/g, '');
+      str
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[\s\-_]/g, '');
 
-    // 1. Process playing items (1..14)
+    // 1. Process playing items (1..14) - in exact sequence, default playedToday=true & playsNextWeek=true
     playing.forEach((item, index) => {
-      // Find matching player in existing list
       const normItem = normalize(item.name);
-      const match = players.find(
-        (p) => !usedIds.has(p.id) && (normalize(p.name) === normItem || normItem.includes(normalize(p.name)))
+      // Try exact match first
+      let match = players.find(
+        (p) => !usedIds.has(p.id) && normalize(p.name) === normItem
       );
+      // Fallback to substring matching
+      if (!match) {
+        match = players.find(
+          (p) =>
+            !usedIds.has(p.id) &&
+            (normItem.includes(normalize(p.name)) || normalize(p.name).includes(normItem))
+        );
+      }
 
       if (match) {
         usedIds.add(match.id);
@@ -363,9 +407,10 @@ export default function App() {
           playedToday: true,
           playsNextWeek: true,
           paidToday: 0,
+          vuelto: 0,
+          orderIndex: index,
         });
       } else {
-        // Create new player / guest
         const newId = `guest-${index}-${Date.now()}`;
         usedIds.add(newId);
         updatedList.push({
@@ -376,17 +421,27 @@ export default function App() {
           playedToday: true,
           playsNextWeek: true,
           paidToday: 0,
+          vuelto: 0,
           paymentMethod: 'mercadopago',
+          orderIndex: index,
         });
       }
     });
 
-    // 2. Process senas (not playing)
-    senas.forEach((item) => {
+    // 2. Process senas (not playing in this match) - in exact sequence
+    senas.forEach((item, senaIndex) => {
       const normItem = normalize(item.name);
-      const match = players.find(
-        (p) => !usedIds.has(p.id) && (normalize(p.name) === normItem || normItem.includes(normalize(p.name)))
+      let match = players.find(
+        (p) => !usedIds.has(p.id) && normalize(p.name) === normItem
       );
+      if (!match) {
+        match = players.find(
+          (p) =>
+            !usedIds.has(p.id) &&
+            (normItem.includes(normalize(p.name)) || normalize(p.name).includes(normItem))
+        );
+      }
+      const orderIdx = playing.length + senaIndex;
 
       if (match) {
         usedIds.add(match.id);
@@ -396,6 +451,8 @@ export default function App() {
           playedToday: false,
           playsNextWeek: false,
           paidToday: 0,
+          vuelto: 0,
+          orderIndex: orderIdx,
         });
       } else {
         const newId = `sena-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
@@ -407,26 +464,25 @@ export default function App() {
           playedToday: false,
           playsNextWeek: false,
           paidToday: 0,
+          vuelto: 0,
           paymentMethod: 'mercadopago',
+          orderIndex: orderIdx,
         });
       }
     });
 
-    // 3. Keep remaining known players who weren't in the message
-    players.forEach((p) => {
-      if (!usedIds.has(p.id)) {
-        updatedList.push({
-          ...p,
-          playedToday: false,
-          playsNextWeek: false,
-          paidToday: 0,
-        });
-      }
-    });
-
+    // Update local state immediately for instant feedback
     setPlayers(updatedList);
-    saveAllPlayersToCloud(updatedList).catch(() => {});
-    saveMatchConfigToCloud({ ...config, matchTitle: title || config.matchTitle }).catch(() => {});
+
+    // Atomically replace in Firestore so all other devices receive the exact list instantly
+    replacePlayersInCloud(updatedList, { matchTitle: newTitle })
+      .then(() => {
+        showToast('¡Lista sincronizada en tiempo real con todos los dispositivos!');
+      })
+      .catch((err) => {
+        console.error('Error sincronizando con Firestore:', err);
+        showToast('Lista aplicada (error al guardar en Firestore)');
+      });
   };
 
   const handleResetToDefaults = () => {
@@ -524,7 +580,7 @@ export default function App() {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Buscar jugador..."
-                    className="w-full pl-9 pr-3 py-1.5 bg-zinc-900/80 border border-zinc-800 rounded-xl text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/70"
+                    className="w-full pl-9 pr-3 py-1.5 bg-zinc-900/80 border border-zinc-800 rounded-xl text-base sm:text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/70"
                   />
                   {searchQuery && (
                     <button
@@ -590,7 +646,7 @@ export default function App() {
               <div className="min-w-[200px]">Jugador & Saldo Anterior</div>
               <div className="flex items-center gap-4 flex-1 justify-end">
                 <span className="w-24 text-center">¿Jugó Hoy?</span>
-                <span className="w-36 text-center">¿Cuánto Pagó?</span>
+                <span className="w-40 text-center">Pagó / Vuelto</span>
                 <span className="w-24 text-center">Método</span>
                 <span className="w-28 text-center">Próx. Viernes</span>
                 <span className="w-32 text-right">Saldo Resultante</span>

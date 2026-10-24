@@ -1,8 +1,11 @@
 import { Player, MatchConfig } from '../types/fulbito';
 
 export const DEFAULT_MATCH_CONFIG: MatchConfig = {
-  pitchCost: 42000,     // $42.000 costo total de la cancha (Fútbol 7)
-  depositPaid: 10000,    // $10.000 seña entregada previamente a la cancha
+  pitchCost: 96000,     // $96.000 costo total de la cancha (Fútbol 7)
+  depositPaid: 10000,   // Seña previa cancha fija en complejo
+  fondoRecaudador: 0,   // Fondo Recaudador
+  fondoEmi: 0,          // Retrocompatibilidad
+  recaudadorName: 'Recaudador',
   matchTitle: 'Viernes 19hs - Señamos',
   pitchName: 'Cancha Fútbol 7',
   date: new Date().toISOString().split('T')[0],
@@ -10,27 +13,27 @@ export const DEFAULT_MATCH_CONFIG: MatchConfig = {
 
 // Initial base list from Section 2 of Specification
 export const INITIAL_BASE_PLAYERS: Player[] = [
-  { id: '1', name: 'Javi', initialBalance: 6300, playedToday: true, paidToday: 0, paymentMethod: 'mercadopago', playsNextWeek: true },
-  { id: '2', name: 'Alan', initialBalance: 0, playedToday: true, paidToday: 0, paymentMethod: 'mercadopago', playsNextWeek: true },
-  { id: '3', name: 'Mono', initialBalance: 1800, playedToday: true, paidToday: 0, paymentMethod: 'mercadopago', playsNextWeek: true },
-  { id: '4', name: 'Javi mono', initialBalance: 200, playedToday: true, paidToday: 0, paymentMethod: 'mercadopago', playsNextWeek: true },
-  { id: '5', name: 'Nardi', initialBalance: 500, playedToday: true, paidToday: 0, paymentMethod: 'mercadopago', playsNextWeek: false },
-  { id: '6', name: 'Capi', initialBalance: 1000, playedToday: true, paidToday: 0, paymentMethod: 'mercadopago', playsNextWeek: true },
-  { id: '7', name: 'Maui', initialBalance: 0, playedToday: true, paidToday: 0, paymentMethod: 'mercadopago', playsNextWeek: true },
-  { id: '8', name: 'Santi L', initialBalance: -6700, playedToday: true, paidToday: 0, paymentMethod: 'mercadopago', playsNextWeek: true },
-  { id: '9', name: 'Marian', initialBalance: 0, playedToday: true, paidToday: 0, paymentMethod: 'mercadopago', playsNextWeek: true },
-  { id: '10', name: 'Alessa', initialBalance: 600, playedToday: true, paidToday: 0, paymentMethod: 'mercadopago', playsNextWeek: true },
-  { id: '11', name: 'Tío', initialBalance: 200, playedToday: true, paidToday: 0, paymentMethod: 'mercadopago', playsNextWeek: true },
-  { id: '12', name: 'Balvi', initialBalance: 6300, playedToday: true, paidToday: 0, paymentMethod: 'mercadopago', playsNextWeek: true },
-  { id: '13', name: 'Steve', initialBalance: 7800, playedToday: true, paidToday: 0, paymentMethod: 'mercadopago', playsNextWeek: true },
-  { id: '14', name: 'Lori', initialBalance: 900, playedToday: true, paidToday: 0, paymentMethod: 'mercadopago', playsNextWeek: true },
-  // Remaining players (not played today by default)
-  { id: '15', name: 'Gattu', initialBalance: 0, playedToday: false, paidToday: 0, paymentMethod: 'mercadopago', playsNextWeek: false },
-  { id: '16', name: 'Juli', initialBalance: 1800, playedToday: false, paidToday: 0, paymentMethod: 'mercadopago', playsNextWeek: false },
-  { id: '17', name: 'Night', initialBalance: 600, playedToday: false, paidToday: 0, paymentMethod: 'mercadopago', playsNextWeek: false },
-  { id: '18', name: 'Fierro', initialBalance: 1900, playedToday: false, paidToday: 0, paymentMethod: 'mercadopago', playsNextWeek: false },
-  { id: '19', name: 'Mati G', initialBalance: -300, playedToday: false, paidToday: 0, paymentMethod: 'mercadopago', playsNextWeek: false },
-  { id: '20', name: 'Marian 2', initialBalance: 3800, playedToday: false, paidToday: 0, paymentMethod: 'mercadopago', playsNextWeek: false },
+  { id: '1', name: 'Javi', initialBalance: 6300, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 0 },
+  { id: '2', name: 'Alan', initialBalance: 0, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 1 },
+  { id: '3', name: 'Mono', initialBalance: 1800, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 2 },
+  { id: '4', name: 'Javi mono', initialBalance: 200, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 3 },
+  { id: '5', name: 'Nardi', initialBalance: 500, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: false, orderIndex: 4 },
+  { id: '6', name: 'Capi', initialBalance: 1000, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 5 },
+  { id: '7', name: 'Maui', initialBalance: 0, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 6 },
+  { id: '8', name: 'Santi L', initialBalance: -6700, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 7 },
+  { id: '9', name: 'Marian', initialBalance: 0, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 8 },
+  { id: '10', name: 'Alessa', initialBalance: 600, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 9 },
+  { id: '11', name: 'Tío', initialBalance: 200, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 10 },
+  { id: '12', name: 'Balvi', initialBalance: 6300, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 11 },
+  { id: '13', name: 'Steve', initialBalance: 7800, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 12 },
+  { id: '14', name: 'Lori', initialBalance: 900, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 13 },
+  // Remaining players (señas / not played today by default)
+  { id: '15', name: 'Gattu', initialBalance: 0, playedToday: false, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: false, orderIndex: 14 },
+  { id: '16', name: 'Juli', initialBalance: 1800, playedToday: false, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: false, orderIndex: 15 },
+  { id: '17', name: 'Night', initialBalance: 600, playedToday: false, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: false, orderIndex: 16 },
+  { id: '18', name: 'Fierro', initialBalance: 1900, playedToday: false, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: false, orderIndex: 17 },
+  { id: '19', name: 'Mati G', initialBalance: -300, playedToday: false, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: false, orderIndex: 18 },
+  { id: '20', name: 'Marian 2', initialBalance: 3800, playedToday: false, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: false, orderIndex: 19 },
 ];
 
 // Preset based on today's reference provided by user

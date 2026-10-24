@@ -8,4 +8,12 @@
   code, kbd, samp, pre {
     font-family: 'JetBrains Mono', monospace;
   }
+
+  /* Prevent iPhone Safari automatic viewport zoom when focusing inputs */
+  @media screen and (max-width: 768px) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+  }
 }
+

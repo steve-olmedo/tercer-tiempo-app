@@ -10,7 +10,8 @@ service cloud.firestore {
     function isValidConfig(data) {
       return data.pitchCost is number && data.pitchCost >= 0
         && data.depositPaid is number && data.depositPaid >= 0
-        && data.matchTitle is string && data.matchTitle.size() <= 100;
+        && (!('fondoEmi' in data) || data.fondoEmi is number)
+        && (!('matchTitle' in data) || (data.matchTitle is string && data.matchTitle.size() <= 100));
     }
 
     function isValidPlayer(data) {
@@ -19,7 +20,9 @@ service cloud.firestore {
         && data.playedToday is bool
         && data.paidToday is number && data.paidToday >= 0
         && data.paymentMethod in ['efectivo', 'mercadopago']
-        && data.playsNextWeek is bool;
+        && data.playsNextWeek is bool
+        && (!('vuelto' in data) || data.vuelto is number)
+        && (!('orderIndex' in data) || data.orderIndex is number);
     }
 
     function isValidHistory(data) {

@@ -33,23 +33,29 @@ export const CashClosingBar: React.FC<CashClosingBarProps> = ({
   const [copied, setCopied] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Math calculations
+  // Math calculations with Vuelto and Fondo Recaudador
   const playedPlayers = players.filter((p) => p.playedToday);
   const playedCount = playedPlayers.length;
 
   const cashTotal = players.reduce(
-    (acc, p) => (p.paymentMethod === 'efectivo' ? acc + p.paidToday : acc),
+    (acc, p) => (p.paymentMethod === 'efectivo' ? acc + (p.paidToday - (p.vuelto || 0)) : acc),
     0
   );
 
   const mpTotal = players.reduce(
-    (acc, p) => (p.paymentMethod === 'mercadopago' ? acc + p.paidToday : acc),
+    (acc, p) => (p.paymentMethod === 'mercadopago' ? acc + (p.paidToday - (p.vuelto || 0)) : acc),
     0
   );
 
+  const totalVueltos = players.reduce((acc, p) => acc + (p.vuelto || 0), 0);
   const totalCollected = cashTotal + mpTotal;
-  const remainingPitchDebt = Math.max(0, config.pitchCost - config.depositPaid);
-  const collectionDiff = totalCollected - config.pitchCost;
+  const courtCost = config.pitchCost || 96000;
+  const fondoRecaudador = config.fondoRecaudador ?? config.fondoEmi ?? 0;
+
+  // Shortfall & Surplus for the court payment
+  const shortfall = Math.max(0, courtCost - totalCollected);
+  const surplus = Math.max(0, totalCollected - courtCost);
+  const newFondoRecaudador = fondoRecaudador + surplus - shortfall;
 
   // Next week stats
   const nextWeekCount = players.filter((p) => p.playsNextWeek).length;
@@ -80,46 +86,63 @@ export const CashClosingBar: React.FC<CashClosingBarProps> = ({
           {/* Card 1: Cuota & Jugaron */}
           <div className="p-3 bg-zinc-950/80 rounded-xl border border-zinc-800/80">
             <span className="text-[11px] font-medium text-zinc-400 block mb-1">
-              Desglose de Cuota
+              Desglose de Cuota (Redondeo $100)
             </span>
             <div className="text-lg font-bold font-mono text-emerald-400">
               {formatPesos(costPerPerson)}{' '}
               <span className="text-xs font-normal text-zinc-400">x persona</span>
             </div>
             <p className="text-xs text-zinc-500 mt-1">
-              Costo cancha: {formatPesos(config.pitchCost)} / {playedCount} jugaron
+              Cancha: {formatPesos(courtCost)} / {playedCount} jugaron
             </p>
           </div>
 
-          {/* Card 2: Saldo Cancha */}
+          {/* Card 2: Pago Cancha Hoy */}
           <div className="p-3 bg-zinc-950/80 rounded-xl border border-zinc-800/80">
             <span className="text-[11px] font-medium text-zinc-400 block mb-1">
-              Pago Cancha Complejo
+              Pago Cancha Viernes
             </span>
             <div className="text-lg font-bold font-mono text-zinc-200">
-              {formatPesos(remainingPitchDebt)}
+              {formatPesos(courtCost)}
             </div>
             <p className="text-xs text-zinc-500 mt-1">
-              Total {formatPesos(config.pitchCost)} - Seña {formatPesos(config.depositPaid)}
+              Seña previa cancha: {formatPesos(config.depositPaid)} (fija en complejo)
             </p>
           </div>
 
-          {/* Card 3: Arqueo Físico vs MP */}
+          {/* Card 3: Fondo Recaudador & Pago Cancha */}
           <div className="p-3 bg-zinc-950/80 rounded-xl border border-zinc-800/80">
-            <span className="text-[11px] font-medium text-zinc-400 block mb-1">
-              Efectivo vs Saldo Cancha
-            </span>
-            <div
-              className={`text-lg font-bold font-mono ${
-                cashTotal >= remainingPitchDebt ? 'text-emerald-400' : 'text-amber-400'
-              }`}
-            >
-              {cashTotal >= remainingPitchDebt ? 'Cubre en mano' : 'Requiere MP'}
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] font-medium text-zinc-400">
+                Fondo Recaudador
+              </span>
+              {totalVueltos > 0 && (
+                <span className="text-[10px] font-bold text-amber-400 font-mono bg-amber-400/10 px-1.5 py-0.5 rounded border border-amber-400/20">
+                  Vueltos: {formatPesos(totalVueltos)}
+                </span>
+              )}
+            </div>
+            <div className="flex items-baseline gap-2">
+              <div className="text-lg font-bold font-mono text-amber-400">
+                {formatPesos(newFondoRecaudador)}
+              </div>
+              {shortfall > 0 && (
+                <span className="text-xs font-mono text-rose-400 font-semibold">
+                  (-{formatPesos(shortfall)} saca p/ cancha)
+                </span>
+              )}
+              {surplus > 0 && (
+                <span className="text-xs font-mono text-emerald-400 font-semibold">
+                  (+{formatPesos(surplus)} sobrante ingresa)
+                </span>
+              )}
             </div>
             <p className="text-xs text-zinc-500 mt-1">
-              {cashTotal >= remainingPitchDebt
-                ? `Sobran ${formatPesos(cashTotal - remainingPitchDebt)} en billetes`
-                : `Faltan ${formatPesos(remainingPitchDebt - cashTotal)} de billetes`}
+              {shortfall > 0
+                ? `Recaudador cubre $${formatPesos(shortfall)} del fondo para pagar la cancha`
+                : surplus > 0
+                ? `Sobrante de $${formatPesos(surplus)} se suma al fondo`
+                : 'Recaudación de hoy cubre exacto la cancha'}
             </p>
           </div>
 
@@ -196,7 +219,7 @@ export const CashClosingBar: React.FC<CashClosingBarProps> = ({
               </div>
             </div>
 
-            {/* Total Recaudado vs Cancha */}
+            {/* Total Recaudado vs Cancha & Fondo Recaudador */}
             <div className="hidden lg:flex items-center gap-2 border-l border-zinc-800 pl-6">
               <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300">
                 <Wallet className="w-4 h-4" />
@@ -205,13 +228,23 @@ export const CashClosingBar: React.FC<CashClosingBarProps> = ({
                 <span className="text-[10px] text-zinc-400 block leading-none font-medium">
                   Recaudado Hoy
                 </span>
-                <div className="flex items-baseline gap-1.5">
+                <div className="flex items-center gap-2">
                   <span className="text-sm font-bold font-mono text-white">
                     {formatPesos(totalCollected)}
                   </span>
                   <span className="text-[10px] text-zinc-500 font-mono">
-                    / Cancha {formatPesos(config.pitchCost)}
+                    / Cancha {formatPesos(courtCost)}
                   </span>
+                  {shortfall > 0 && (
+                    <span className="text-[10px] font-mono text-rose-400 bg-rose-400/10 px-1.5 py-0.5 rounded border border-rose-400/20">
+                      Fondo cubre -{formatPesos(shortfall)}
+                    </span>
+                  )}
+                  {surplus > 0 && (
+                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded border border-emerald-400/20">
+                      +{formatPesos(surplus)} a Fondo
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

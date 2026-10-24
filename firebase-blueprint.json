@@ -11,7 +11,11 @@
         },
         "depositPaid": {
           "type": "number",
-          "description": "Monto de la seña previa entregada a la cancha"
+          "description": "Monto de la seña previa cancha"
+        },
+        "fondoEmi": {
+          "type": "number",
+          "description": "Fondo guardado por Emi"
         },
         "matchTitle": {
           "type": "string",
@@ -29,7 +33,7 @@
           "maxLength": 20
         }
       },
-      "required": ["pitchCost", "depositPaid", "matchTitle"]
+      "required": ["pitchCost", "depositPaid"]
     },
     "Player": {
       "title": "Player",
@@ -56,6 +60,14 @@
         "paidToday": {
           "type": "number",
           "description": "Monto abonado hoy"
+        },
+        "vuelto": {
+          "type": "number",
+          "description": "Monto de vuelto pedido o devuelto"
+        },
+        "orderIndex": {
+          "type": "number",
+          "description": "Orden en la lista del mensaje de WhatsApp"
         },
         "paymentMethod": {
           "type": "string",

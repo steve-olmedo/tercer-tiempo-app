@@ -5,16 +5,21 @@ export interface Player {
   name: string;
   isGuest?: boolean;
   initialBalance: number; // Saldo previo / seña anterior
-  playedToday: boolean;   // ¿Jugó hoy?
+  playedToday: boolean;   // ¿Jugó hoy? (Default true en import)
   paidToday: number;      // ¿Cuánto pagó hoy?
+  vuelto?: number;        // Vuelto solicitado / pedido (ej: paga $10.000 con $2.000 vuelto -> neto $8.000)
   paymentMethod: PaymentMethod; // Efectivo o MercadoPago
   playsNextWeek: boolean; // ¿Juega el próximo viernes?
+  orderIndex?: number;    // Posición exacta en la lista del mensaje de WhatsApp
 }
 
 export interface MatchConfig {
-  pitchCost: number;       // Costo Total de la Cancha (ej: $42.000)
-  depositPaid: number;     // Seña Previa Entregada (ej: $10.000)
-  matchTitle: string;      // Título / horario (ej: "Viernes 19hs - Señamos")
+  pitchCost: number;       // Costo Total de la Cancha (ej: $96.000)
+  depositPaid: number;     // Seña previa cancha (fija en complejo, ej: $10.000)
+  fondoRecaudador?: number;// Fondo Recaudador (monto en custodia del recaudador)
+  fondoEmi?: number;       // Retrocompatibilidad con datos anteriores
+  recaudadorName?: string; // Nombre del recaudador (opcional, ej: "Emi" o "Recaudador")
+  matchTitle: string;      // Título / encabezado
   pitchName: string;       // Nombre de la cancha (ej: "Fútbol 7")
   date: string;            // Fecha del partido
 }
@@ -52,6 +57,8 @@ export interface PlayerMatchSnapshot {
   initialBalance: number;
   playedToday: boolean;
   paidToday: number;
+  vuelto?: number;
+  netPaid?: number;
   paymentMethod: PaymentMethod;
   playsNextWeek: boolean;
   updatedBalance: number;
@@ -64,6 +71,10 @@ export interface MatchClosingRecord {
   matchTitle: string;
   pitchCost: number;
   depositPaid: number;
+  fondoRecaudador?: number;
+  fondoEmi?: number;
+  shortfallFromFund?: number; // Cuánto se sacó del Fondo Recaudador para pagar la cancha
+  surplusToFund?: number;     // Cuánto sobró y fue al Fondo Recaudador
   costPerPerson: number;
   playedCount: number;
   cashTotal: number;

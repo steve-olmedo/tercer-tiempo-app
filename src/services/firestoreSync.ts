@@ -85,16 +85,17 @@ export function subscribeToPlayers(
       snapshot.forEach((d) => {
         list.push({ id: d.id, ...d.data() } as Player);
       });
-      if (list.length > 0) {
-        // Sort numerically by ID so 1..20 stay in exact Friday list order
-        list.sort((a, b) => {
-          const numA = Number(a.id);
-          const numB = Number(b.id);
-          if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-          return a.name.localeCompare(b.name);
-        });
-        onUpdate(list);
-      }
+      // Sort by orderIndex first so pasted WhatsApp sequence is preserved across all devices
+      list.sort((a, b) => {
+        const ordA = a.orderIndex !== undefined ? a.orderIndex : 9999;
+        const ordB = b.orderIndex !== undefined ? b.orderIndex : 9999;
+        if (ordA !== ordB) return ordA - ordB;
+        const numA = Number(a.id);
+        const numB = Number(b.id);
+        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+        return a.name.localeCompare(b.name);
+      });
+      onUpdate(list);
     },
     (error) => {
       try {
@@ -170,6 +171,47 @@ export async function saveAllPlayersToCloud(players: Player[]): Promise<void> {
     await batch.commit();
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, PLAYERS_COLL_PATH);
+  }
+}
+
+/**
+ * Atomically replaces the active players list in Firestore with the newly imported WhatsApp list,
+ * deleting any players no longer present, updating all players in exact order,
+ * and optionally updating match configuration in a single batch.
+ */
+export async function replacePlayersInCloud(
+  updatedPlayers: Player[],
+  newConfig?: Partial<MatchConfig>
+): Promise<void> {
+  try {
+    const playersSnap = await getDocs(collection(db, PLAYERS_COLL_PATH));
+    const newIds = new Set(updatedPlayers.map((p) => p.id));
+    const batch = writeBatch(db);
+
+    // 1. Delete all existing player documents not in the new list
+    playersSnap.forEach((docSnap) => {
+      if (!newIds.has(docSnap.id)) {
+        batch.delete(docSnap.ref);
+      }
+    });
+
+    // 2. Set all players in the new list
+    updatedPlayers.forEach((player) => {
+      const { id, ...data } = player;
+      const ref = doc(db, PLAYERS_COLL_PATH, id);
+      batch.set(ref, data);
+    });
+
+    // 3. Update match config if provided
+    if (newConfig) {
+      const configRef = doc(db, 'config', 'current');
+      batch.set(configRef, newConfig, { merge: true });
+    }
+
+    await batch.commit();
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, PLAYERS_COLL_PATH);
+    throw error;
   }
 }
 

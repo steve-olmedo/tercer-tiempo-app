@@ -17,6 +17,9 @@ export const TacticalPitchBoard: React.FC<TacticalPitchBoardProps> = ({
   onSwapPositions,
 }) => {
   const [selectedSlotIndex, setSelectedSlotIndex] = useState<number | null>(null);
+  const [dragSourceIndex, setDragSourceIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const touchStartSlot = React.useRef<number | null>(null);
 
   const handleSlotClick = (index: number) => {
     if (selectedSlotIndex === null) {
@@ -30,6 +33,71 @@ export const TacticalPitchBoard: React.FC<TacticalPitchBoardProps> = ({
       onSwapPositions(selectedSlotIndex, index);
       setSelectedSlotIndex(null);
     }
+  };
+
+  // HTML5 Drag handlers
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    e.dataTransfer.setData('text/plain', index.toString());
+    e.dataTransfer.effectAllowed = 'move';
+    setDragSourceIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDragLeave = (index: number) => {
+    if (dragOverIndex === index) {
+      setDragOverIndex(null);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+    e.preventDefault();
+    const sourceStr = e.dataTransfer.getData('text/plain');
+    const sourceIndex = sourceStr ? Number(sourceStr) : dragSourceIndex;
+
+    if (sourceIndex !== null && !isNaN(sourceIndex) && sourceIndex !== targetIndex) {
+      onSwapPositions(sourceIndex, targetIndex);
+    }
+
+    setDragSourceIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDragSourceIndex(null);
+    setDragOverIndex(null);
+  };
+
+  // Mobile Touch Drag handlers
+  const handleTouchStart = (index: number) => {
+    touchStartSlot.current = index;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartSlot.current === null) return;
+    const touch = e.touches[0];
+    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+    const slotEl = element?.closest('[data-tactical-slot]');
+    if (slotEl) {
+      const idx = Number(slotEl.getAttribute('data-tactical-slot'));
+      if (!isNaN(idx) && idx !== touchStartSlot.current) {
+        setDragOverIndex(idx);
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartSlot.current !== null && dragOverIndex !== null && touchStartSlot.current !== dragOverIndex) {
+      onSwapPositions(touchStartSlot.current, dragOverIndex);
+    }
+    touchStartSlot.current = null;
+    setDragOverIndex(null);
   };
 
   const isBlue = colorTheme === 'blue';
@@ -52,7 +120,12 @@ export const TacticalPitchBoard: React.FC<TacticalPitchBoardProps> = ({
           </span>
         </div>
 
-        {selectedSlotIndex !== null ? (
+        {dragOverIndex !== null && dragSourceIndex !== null ? (
+          <div className="flex items-center gap-1.5 text-xs text-amber-400 font-semibold animate-pulse">
+            <ArrowLeftRight className="w-3.5 h-3.5" />
+            <span>Soltar para intercambiar</span>
+          </div>
+        ) : selectedSlotIndex !== null ? (
           <div className="flex items-center gap-1.5 text-xs text-amber-400 font-medium animate-pulse">
             <ArrowLeftRight className="w-3.5 h-3.5" />
             <span>Toca otra posición para intercambiar</span>
@@ -65,13 +138,17 @@ export const TacticalPitchBoard: React.FC<TacticalPitchBoardProps> = ({
           </div>
         ) : (
           <span className="text-[11px] text-zinc-400 hidden sm:inline">
-            Toca 2 posiciones para intercambiarlas
+            Arrastra o toca para intercambiar posiciones
           </span>
         )}
       </div>
 
       {/* CANCHA VERDE TÁCTICA (PITCH) */}
-      <div className="relative w-full aspect-[4/5] sm:aspect-[4/5] max-h-[520px] bg-gradient-to-b from-green-950 via-emerald-950 to-green-950 overflow-hidden border-t border-b border-green-900/60 select-none">
+      <div
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        className="relative w-full aspect-[4/5] sm:aspect-[4/5] max-h-[520px] bg-gradient-to-b from-green-950 via-emerald-950 to-green-950 overflow-hidden border-t border-b border-green-900/60 select-none"
+      >
         {/* Grass Texture Pattern & Pitch Markings */}
         <div className="absolute inset-0 opacity-15 pointer-events-none bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px]" />
 
@@ -94,24 +171,42 @@ export const TacticalPitchBoard: React.FC<TacticalPitchBoardProps> = ({
         {F7_POSITIONS.map((slot) => {
           const player = players[slot.index] || null;
           const isSelected = selectedSlotIndex === slot.index;
+          const isDraggingThis = dragSourceIndex === slot.index;
+          const isHoveredTarget = dragOverIndex === slot.index && dragSourceIndex !== slot.index;
 
           return (
             <div
               key={slot.index}
+              data-tactical-slot={slot.index}
+              draggable={true}
+              onDragStart={(e) => handleDragStart(e, slot.index)}
+              onDragOver={(e) => handleDragOver(e, slot.index)}
+              onDragLeave={() => handleDragLeave(slot.index)}
+              onDrop={(e) => handleDrop(e, slot.index)}
+              onDragEnd={handleDragEnd}
+              onTouchStart={() => handleTouchStart(slot.index)}
               onClick={() => handleSlotClick(slot.index)}
               style={{
                 left: `${slot.x}%`,
                 top: `${slot.y}%`,
                 transform: 'translate(-50%, -50%)',
               }}
-              className={`absolute cursor-pointer flex flex-col items-center transition-all duration-150 z-10 group ${
-                isSelected ? 'scale-110 z-20' : 'hover:scale-105'
+              className={`absolute cursor-grab active:cursor-grabbing flex flex-col items-center transition-all duration-150 z-10 group ${
+                isDraggingThis
+                  ? 'opacity-40 scale-95 z-30'
+                  : isHoveredTarget
+                  ? 'scale-125 z-30 ring-4 ring-amber-400 rounded-full animate-bounce'
+                  : isSelected
+                  ? 'scale-110 z-20'
+                  : 'hover:scale-105'
               }`}
             >
               {/* Jersey / Circle Badge */}
               <div
                 className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full flex flex-col items-center justify-center font-bold text-xs shadow-md border-2 transition-all ${
-                  isSelected
+                  isHoveredTarget
+                    ? 'ring-4 ring-amber-400 border-white bg-amber-400 text-black scale-110'
+                    : isSelected
                     ? 'ring-4 ring-amber-400 border-white bg-amber-500 text-black scale-105'
                     : player
                     ? isBlue
@@ -131,7 +226,9 @@ export const TacticalPitchBoard: React.FC<TacticalPitchBoardProps> = ({
               {/* Player Name Pill */}
               <div
                 className={`mt-1 px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-semibold whitespace-nowrap shadow-sm border max-w-[110px] truncate text-center ${
-                  isSelected
+                  isHoveredTarget
+                    ? 'bg-amber-400 text-black border-amber-300 font-extrabold'
+                    : isSelected
                     ? 'bg-amber-400 text-black border-amber-300 font-bold'
                     : player
                     ? 'bg-zinc-950/90 text-white border-zinc-700'

@@ -175,6 +175,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                       </div>
                       <p className="text-xs text-zinc-400 mt-0.5">
                         {record.playedCount} jugaron • Cuota {formatPesos(record.costPerPerson)} c/u • Cancha {formatPesos(record.pitchCost)}
+                        {(record.fondoRecaudador || record.fondoEmi) ? ` • Fondo Recaudador ${formatPesos(record.fondoRecaudador || record.fondoEmi || 0)}` : ''}
+                        {record.shortfallFromFund ? ` • Aporte Fondo -${formatPesos(record.shortfallFromFund)}` : ''}
                       </p>
                     </div>
                   </div>
@@ -314,8 +316,13 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                               <td className="py-2 px-2 text-right">
                                 {p.playedToday ? formatPesos(record.costPerPerson) : '$0'}
                               </td>
-                              <td className="py-2 px-2 text-right text-emerald-400 font-semibold">
-                                {formatPesos(p.paidToday)}
+                              <td className="py-2 px-2 text-right">
+                                <span className="text-emerald-400 font-semibold">{formatPesos(p.paidToday)}</span>
+                                {p.vuelto && p.vuelto > 0 ? (
+                                  <span className="block text-[10px] text-amber-400/90 font-normal">
+                                    Vuelto: {formatPesos(p.vuelto)}
+                                  </span>
+                                ) : null}
                               </td>
                               <td className="py-2 px-2 text-center">
                                 <span className="text-[10px] uppercase font-sans">

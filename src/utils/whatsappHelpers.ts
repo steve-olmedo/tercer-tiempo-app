@@ -20,16 +20,24 @@ export function parseWhatsAppList(text: string): {
   let inSenasSection = false;
 
   for (const line of lines) {
-    // Check if header / title
-    if (line.startsWith('*') && (line.toLowerCase().includes('seña') || line.toLowerCase().includes('senas') || line.toLowerCase().includes('señas:'))) {
+    // Check if specifically the Señas section header (e.g., "*Señas:*", "*Señas*", "Señas:", "Senas:")
+    // Must NOT match titles like "*Viernes 19hs - Señamos*"
+    const isSenasHeader = /^\s*\*?\s*(?:señas?|senas?)\s*:?\s*\*?\s*$/i.test(line);
+    if (isSenasHeader) {
       inSenasSection = true;
       continue;
     }
-    if (!inSenasSection && (line.startsWith('*') || line.toLowerCase().includes('viernes') || line.toLowerCase().includes('partido'))) {
-      if (!title) {
-        title = line.replace(/\*/g, '').trim();
+
+    // Match title if at start and not yet found
+    if (!inSenasSection && (line.startsWith('*') || line.toLowerCase().includes('viernes') || line.toLowerCase().includes('partido') || line.toLowerCase().includes('fútbol') || line.toLowerCase().includes('futbol'))) {
+      // If it has a list number (like "1. Javi"), it is a player, not the title!
+      const isNumberedPlayer = /^\s*(\d+)[\.\-\)]\s*/.test(line);
+      if (!isNumberedPlayer) {
+        if (!title) {
+          title = line.replace(/\*/g, '').trim();
+        }
+        continue;
       }
-      continue;
     }
 
     // Parse amount from end or within the line
@@ -75,15 +83,40 @@ export function parseWhatsAppList(text: string): {
 }
 
 /**
+ * Calculates cost per player for today's match,
+ * rounded to the nearest multiple of 100 pesos:
+ * e.g. $96.000 / 14 = 6857.14 -> 6900
+ */
+export function calculateCostPerPerson(pitchCost: number, playedCount: number): number {
+  const count = playedCount > 0 ? playedCount : 14;
+  return Math.round((pitchCost / count) / 100) * 100;
+}
+
+/**
+ * Calculates how much a player needs to put today:
+ * 6900 - seña previa (saldo anterior).
+ * If the player has positive deposit >= cost, they put $0.
+ * If the player has debt (< 0), they must pay cost + their debt.
+ * If the player didn't play today, they owe $0 for this match.
+ */
+export function calculateAmountDueToday(player: Player, costPerPerson: number): number {
+  if (!player.playedToday) return 0;
+  return Math.max(0, costPerPerson - (player.initialBalance || 0));
+}
+
+/**
  * Calculates updated balance for next week:
- * Saldo anterior - Costo de hoy (si jugó) + Pagó hoy
+ * Saldo anterior - Costo de hoy (si jugó) + (Pagó hoy - Vuelto pedido)
+ * Ej: Cuota $6.900, tenía seña $2.000 -> pone $4.900 -> nuevo saldo $0.
+ * Ej: Cuota $6.900, pone $10.000 y pide $2.000 de vuelto (neto $8.000) -> queda $1.100 a favor.
  */
 export function calculateUpdatedBalance(
   player: Player,
   costPerPerson: number
 ): number {
   const matchDeduction = player.playedToday ? costPerPerson : 0;
-  return player.initialBalance - matchDeduction + player.paidToday;
+  const netPaid = (player.paidToday || 0) - (player.vuelto || 0);
+  return (player.initialBalance || 0) - matchDeduction + netPaid;
 }
 
 /**
@@ -100,15 +133,19 @@ export function generateWhatsAppMessage(
   config: MatchConfig,
   costPerPerson: number
 ): string {
-  // Players who checked "Juega el próximo viernes"
-  const nextWeekPlayers = players.filter((p) => p.playsNextWeek);
+  // Players who checked "Juega el próximo viernes", sorted by WhatsApp pasted order
+  const nextWeekPlayers = [...players]
+    .filter((p) => p.playsNextWeek)
+    .sort((a, b) => (a.orderIndex ?? 9999) - (b.orderIndex ?? 9999));
 
   // Players who are NOT playing next week but have an updated balance != 0
-  const nonPlayingWithBalance = players.filter((p) => {
-    if (p.playsNextWeek) return false;
-    const updated = calculateUpdatedBalance(p, costPerPerson);
-    return updated !== 0;
-  });
+  const nonPlayingWithBalance = [...players]
+    .filter((p) => {
+      if (p.playsNextWeek) return false;
+      const updated = calculateUpdatedBalance(p, costPerPerson);
+      return updated !== 0;
+    })
+    .sort((a, b) => (a.orderIndex ?? 9999) - (b.orderIndex ?? 9999));
 
   const header = `*${config.matchTitle || 'Viernes 19hs - Señamos'}*`;
 

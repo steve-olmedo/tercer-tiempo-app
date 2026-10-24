@@ -262,7 +262,7 @@ export const TeamBuilder: React.FC<TeamBuilderProps> = ({
             className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-green-700 hover:bg-green-600 text-white transition-all shadow-sm"
           >
             <ImageIcon className="w-3.5 h-3.5" />
-            <span>Generar Imagen</span>
+            <span>Generar Pizarra</span>
           </button>
         </div>
       </div>
@@ -613,8 +613,8 @@ export const TeamBuilder: React.FC<TeamBuilderProps> = ({
       <MatchPosterModal
         isOpen={isPosterModalOpen}
         onClose={() => setIsPosterModalOpen(false)}
-        blueTeam={cleanBluePlayers}
-        orangeTeam={cleanOrangePlayers}
+        blueTeam={blueTeam}
+        orangeTeam={orangeTeam}
         config={config}
       />
     </div>

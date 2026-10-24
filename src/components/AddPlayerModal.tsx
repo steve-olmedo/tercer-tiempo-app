@@ -79,7 +79,7 @@ export const AddPlayerModal: React.FC<AddPlayerModalProps> = ({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Ej: Agus amigo mono, Lucas, Rodri..."
-              className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/70"
+              className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-base sm:text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/70"
             />
           </div>
 
@@ -97,7 +97,7 @@ export const AddPlayerModal: React.FC<AddPlayerModalProps> = ({
                 value={initialBalance === 0 ? '' : initialBalance}
                 onChange={(e) => setInitialBalance(Number(e.target.value) || 0)}
                 placeholder="0 (o negativo si debe, ej: -300)"
-                className="w-full pl-7 pr-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-sm font-mono text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/70"
+                className="w-full pl-7 pr-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-base sm:text-sm font-mono text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/70"
               />
             </div>
             <p className="text-[11px] text-zinc-500 mt-1">

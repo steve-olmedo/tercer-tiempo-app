@@ -1,6 +1,6 @@
 import React from 'react';
 import { Player, PaymentMethod } from '../types/fulbito';
-import { calculateUpdatedBalance } from '../utils/whatsappHelpers';
+import { calculateUpdatedBalance, calculateAmountDueToday } from '../utils/whatsappHelpers';
 import { formatPesos } from '../utils/formatters';
 import { Banknote, Smartphone, Trash2, ArrowRight } from 'lucide-react';
 
@@ -20,7 +20,7 @@ export const PlayerFinanceRow: React.FC<PlayerFinanceRowProps> = ({
   onRemoveGuest,
 }) => {
   const updatedBalance = calculateUpdatedBalance(player, costPerPerson);
-  const deduction = player.playedToday ? costPerPerson : 0;
+  const amountDueToday = calculateAmountDueToday(player, costPerPerson);
 
   const handlePlayedChange = (checked: boolean) => {
     onUpdate({
@@ -33,6 +33,13 @@ export const PlayerFinanceRow: React.FC<PlayerFinanceRowProps> = ({
     onUpdate({
       ...player,
       paidToday: Math.max(0, amount),
+    });
+  };
+
+  const handleVueltoChange = (amount: number) => {
+    onUpdate({
+      ...player,
+      vuelto: Math.max(0, amount),
     });
   };
 
@@ -52,8 +59,13 @@ export const PlayerFinanceRow: React.FC<PlayerFinanceRowProps> = ({
     });
   };
 
+  // Exacto pone lo que corresponde pagar hoy (6900 - seña previa)
   const handlePayExactMatch = () => {
-    handlePaidChange(costPerPerson);
+    onUpdate({
+      ...player,
+      paidToday: amountDueToday,
+      vuelto: 0,
+    });
   };
 
   return (
@@ -64,8 +76,8 @@ export const PlayerFinanceRow: React.FC<PlayerFinanceRowProps> = ({
           : 'bg-zinc-950/40 border-zinc-900/80 opacity-75 hover:opacity-100 hover:border-zinc-800'
       }`}
     >
-      {/* Col 1: Player Name, Index & Initial Balance */}
-      <div className="flex items-center gap-3 min-w-[200px] mb-2 md:mb-0">
+      {/* Col 1: Player Name, Index & Initial Balance + Amount Due Today */}
+      <div className="flex items-center gap-3 min-w-[210px] mb-2 md:mb-0">
         <span className="w-6 text-center text-xs font-mono text-zinc-500 font-semibold">
           {index + 1}.
         </span>
@@ -89,8 +101,8 @@ export const PlayerFinanceRow: React.FC<PlayerFinanceRowProps> = ({
               </button>
             )}
           </div>
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-zinc-500 text-[11px]">Saldo anterior:</span>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+            <span className="text-zinc-500 text-[11px]">Seña previa:</span>
             <span
               className={`font-mono text-xs font-semibold ${
                 player.initialBalance > 0
@@ -102,6 +114,15 @@ export const PlayerFinanceRow: React.FC<PlayerFinanceRowProps> = ({
             >
               {formatPesos(player.initialBalance)}
             </span>
+
+            {player.playedToday && (
+              <span className="text-[11px] text-zinc-400 font-mono">
+                • Pone hoy:{' '}
+                <strong className={amountDueToday > 0 ? 'text-amber-400 font-bold' : 'text-emerald-400 font-medium'}>
+                  {formatPesos(amountDueToday)}
+                </strong>
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -132,30 +153,64 @@ export const PlayerFinanceRow: React.FC<PlayerFinanceRowProps> = ({
           </span>
         </div>
 
-        {/* Input: ¿Cuánto pagó hoy? */}
-        <div className="flex items-center gap-1.5">
-          <div className="relative w-28 sm:w-32">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500 font-mono text-xs">
-              $
-            </span>
-            <input
-              type="number"
-              min="0"
-              step="100"
-              value={player.paidToday === 0 ? '' : player.paidToday}
-              onChange={(e) => handlePaidChange(Number(e.target.value) || 0)}
-              placeholder="0"
-              className="w-full pl-6 pr-2 py-1.5 bg-zinc-950 border border-zinc-800 rounded-lg text-xs font-mono text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-green-600"
-            />
+        {/* Input: ¿Cuánto pagó hoy? y Vuelto */}
+        <div className="flex flex-col gap-1 min-w-[140px] sm:min-w-[165px]">
+          <div className="flex items-center gap-1.5">
+            <div className="relative flex-1">
+              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500 font-mono text-xs">
+                $
+              </span>
+              <input
+                type="number"
+                min="0"
+                step="100"
+                value={player.paidToday === 0 ? '' : player.paidToday}
+                onChange={(e) => handlePaidChange(Number(e.target.value) || 0)}
+                placeholder="Pagó"
+                title="Monto que entregó o transfirió el jugador"
+                className="w-full pl-6 pr-2 py-1.5 bg-zinc-950 border border-zinc-800 rounded-lg text-base sm:text-xs font-mono text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:border-green-600"
+              />
+            </div>
+            {player.playedToday && (
+              <button
+                onClick={handlePayExactMatch}
+                title={`Pagar lo correspondiente hoy: ${formatPesos(amountDueToday)} (${formatPesos(costPerPerson)} - seña)`}
+                className="px-1.5 py-1 text-[10px] font-mono rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors border border-zinc-700 whitespace-nowrap"
+              >
+                Exacto
+              </button>
+            )}
           </div>
-          {player.playedToday && (
-            <button
-              onClick={handlePayExactMatch}
-              title={`Marcar cuota exacta: ${formatPesos(costPerPerson)}`}
-              className="px-1.5 py-1 text-[10px] font-mono rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors border border-zinc-700"
-            >
-              Exacto
-            </button>
+
+          {/* Vuelto Input */}
+          <div className="flex items-center gap-1">
+            <div className="relative flex-1">
+              <span className="text-[10px] text-zinc-500 font-semibold absolute left-2 top-1/2 -translate-y-1/2">
+                Vuelto:
+              </span>
+              <span className="absolute left-13 top-1/2 -translate-y-1/2 text-zinc-500 font-mono text-xs">
+                $
+              </span>
+              <input
+                type="number"
+                min="0"
+                step="100"
+                value={player.vuelto === 0 || !player.vuelto ? '' : player.vuelto}
+                onChange={(e) => handleVueltoChange(Number(e.target.value) || 0)}
+                placeholder="0"
+                title="Monto de vuelto pedido / a devolver"
+                className="w-full pl-16 pr-2 py-1 bg-zinc-950/70 border border-zinc-800/80 rounded-lg text-base sm:text-xs font-mono text-amber-400 placeholder:text-zinc-600 focus:outline-none focus:border-amber-500/70"
+              />
+            </div>
+          </div>
+
+          {(player.vuelto || 0) > 0 && (
+            <div className="text-[10px] text-zinc-400 font-mono flex items-center justify-between px-0.5">
+              <span>Neto pagado:</span>
+              <span className="text-emerald-400 font-semibold">
+                {formatPesos(player.paidToday - (player.vuelto || 0))}
+              </span>
+            </div>
           )}
         </div>
 

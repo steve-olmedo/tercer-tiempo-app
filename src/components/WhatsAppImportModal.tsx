@@ -80,7 +80,7 @@ export const WhatsAppImportModal: React.FC<WhatsAppImportModalProps> = ({
             value={rawText}
             onChange={(e) => setRawText(e.target.value)}
             placeholder="Pega aquí el mensaje con la lista numerada y las señas..."
-            className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl text-xs font-mono text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/70"
+            className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl text-base sm:text-xs font-mono text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/70"
           />
 
           {/* Real-time Parser Results Preview */}
