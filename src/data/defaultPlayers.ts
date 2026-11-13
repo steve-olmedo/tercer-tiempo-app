@@ -2,59 +2,46 @@ import { Player, MatchConfig } from '../types/fulbito';
 
 export const DEFAULT_MATCH_CONFIG: MatchConfig = {
   pitchCost: 96000,     // $96.000 costo total de la cancha (Fútbol 7)
-  depositPaid: 10000,   // Seña previa cancha fija en complejo
+  depositPaid: 0,
   fondoRecaudador: 0,   // Fondo Recaudador
   fondoEmi: 0,          // Retrocompatibilidad
   recaudadorName: 'Recaudador',
-  matchTitle: 'Viernes 19hs - Señamos',
+  matchTitle: 'Viernes 19hs',
   pitchName: 'Cancha Fútbol 7',
   date: new Date().toISOString().split('T')[0],
 };
 
 // Initial base list from Section 2 of Specification
 export const INITIAL_BASE_PLAYERS: Player[] = [
-  { id: '1', name: 'Javi', initialBalance: 6300, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 0 },
+  { id: '1', name: 'Javi', initialBalance: 0, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 0 },
   { id: '2', name: 'Alan', initialBalance: 0, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 1 },
-  { id: '3', name: 'Mono', initialBalance: 1800, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 2 },
-  { id: '4', name: 'Javi mono', initialBalance: 200, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 3 },
-  { id: '5', name: 'Nardi', initialBalance: 500, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: false, orderIndex: 4 },
-  { id: '6', name: 'Capi', initialBalance: 1000, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 5 },
+  { id: '3', name: 'Mono', initialBalance: 0, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 2 },
+  { id: '4', name: 'Javi mono', initialBalance: 0, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 3 },
+  { id: '5', name: 'Nardi', initialBalance: 0, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 4 },
+  { id: '6', name: 'Capi', initialBalance: 0, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 5 },
   { id: '7', name: 'Maui', initialBalance: 0, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 6 },
-  { id: '8', name: 'Santi L', initialBalance: -6700, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 7 },
+  { id: '8', name: 'Santi L', initialBalance: 0, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 7 },
   { id: '9', name: 'Marian', initialBalance: 0, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 8 },
-  { id: '10', name: 'Alessa', initialBalance: 600, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 9 },
-  { id: '11', name: 'Tío', initialBalance: 200, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 10 },
-  { id: '12', name: 'Balvi', initialBalance: 6300, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 11 },
-  { id: '13', name: 'Steve', initialBalance: 7800, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 12 },
-  { id: '14', name: 'Lori', initialBalance: 900, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 13 },
-  // Remaining players (señas / not played today by default)
-  { id: '15', name: 'Gattu', initialBalance: 0, playedToday: false, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: false, orderIndex: 14 },
-  { id: '16', name: 'Juli', initialBalance: 1800, playedToday: false, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: false, orderIndex: 15 },
-  { id: '17', name: 'Night', initialBalance: 600, playedToday: false, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: false, orderIndex: 16 },
-  { id: '18', name: 'Fierro', initialBalance: 1900, playedToday: false, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: false, orderIndex: 17 },
-  { id: '19', name: 'Mati G', initialBalance: -300, playedToday: false, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: false, orderIndex: 18 },
-  { id: '20', name: 'Marian 2', initialBalance: 3800, playedToday: false, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: false, orderIndex: 19 },
+  { id: '10', name: 'Alessa', initialBalance: 0, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 9 },
+  { id: '11', name: 'Tío', initialBalance: 0, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 10 },
+  { id: '12', name: 'Balvi', initialBalance: 0, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 11 },
+  { id: '13', name: 'Steve', initialBalance: 0, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 12 },
+  { id: '14', name: 'Lori', initialBalance: 0, playedToday: true, paidToday: 0, vuelto: 0, paymentMethod: 'mercadopago', playsNextWeek: true, orderIndex: 13 },
 ];
 
 // Preset based on today's reference provided by user
-export const TODAY_REFERENCE_TEXT = `*Viernes 19hs - Señamos*
-1. Javi $2400 
-2. Mo
-3. Mono $900 
-4. Javi mono $300 
-5. Gattu
-6. Capi $1.000 
-7. Night $600
-8. Santi L $- 6.700 
-9. Marian $2900 
-10. Alessa $700 
-11. Tío $200 
-12. Balvi $6300
-13. Steve $7.800 
-14. Agus amigo mono
-
-*Señas:*
-Nardi $500
-Fierro $1.900
-Mati G -$300
-Juli lora $1800`;
+export const TODAY_REFERENCE_TEXT = `*Viernes 19hs*
+1. Javi
+2. Alan
+3. Mono
+4. Javi mono
+5. Nardi
+6. Capi
+7. Maui
+8. Santi L
+9. Marian
+10. Alessa
+11. Tío
+12. Balvi
+13. Steve
+14. Lori`;

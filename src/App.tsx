@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Player, MatchConfig, MatchClosingRecord, PlayerMatchSnapshot } from './types/fulbito';
+import { Player, MatchConfig, MatchClosingRecord, PlayerMatchSnapshot, MPReceipt } from './types/fulbito';
 import {
   INITIAL_BASE_PLAYERS,
   DEFAULT_MATCH_CONFIG,
@@ -23,12 +23,19 @@ import { ShareAppModal } from './components/ShareAppModal';
 import { WhatsAppImportModal } from './components/WhatsAppImportModal';
 import { WhatsAppPreviewModal } from './components/WhatsAppPreviewModal';
 import { AddPlayerModal } from './components/AddPlayerModal';
+import { MPReceiptModal } from './components/MPReceiptModal';
+import { PlayerReceiptPortal } from './components/PlayerReceiptPortal';
 import {
   seedFirestoreIfEmpty,
   subscribeToMatchConfig,
   subscribeToPlayers,
   subscribeToHistory,
   subscribeToTeams,
+  subscribeToReceipts,
+  saveReceiptToCloud,
+  deleteReceiptFromCloud,
+  subscribeToAliases,
+  saveAliasesToCloud,
   saveMatchConfigToCloud,
   savePlayerToCloud,
   saveAllPlayersToCloud,
@@ -94,8 +101,26 @@ export default function App() {
   // Modals
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [isClosingPreviewMode, setIsClosingPreviewMode] = useState(false);
   const [isAddPlayerModalOpen, setIsAddPlayerModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [receiptModalPlayerId, setReceiptModalPlayerId] = useState<string | null>(null);
+
+  const isPlayerReceiptMode = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    const hash = window.location.hash.toLowerCase();
+    return (
+      params.get('modo') === 'comprobante' ||
+      params.has('comprobante') ||
+      params.has('pago') ||
+      hash.includes('comprobante')
+    );
+  }, []);
+
+  // Mercado Pago Receipts & Aliases
+  const [receipts, setReceipts] = useState<MPReceipt[]>([]);
+  const [aliasMap, setAliasMap] = useState<Record<string, string>>({});
 
   const [isCloudReady, setIsCloudReady] = useState(false);
   const [teams, setTeams] = useState<{ blueTeamIds: string[]; orangeTeamIds: string[] }>({
@@ -124,6 +149,14 @@ export default function App() {
       setTeams(cloudTeams);
     });
 
+    const unsubReceipts = subscribeToReceipts((cloudReceipts) => {
+      setReceipts(cloudReceipts);
+    });
+
+    const unsubAliases = subscribeToAliases((cloudAliases) => {
+      setAliasMap(cloudAliases);
+    });
+
     // 2. In background, verify if database needs initial seeding
     seedFirestoreIfEmpty()
       .then(() => {
@@ -139,6 +172,8 @@ export default function App() {
       unsubPlayers();
       unsubHistory();
       unsubTeams();
+      unsubReceipts();
+      unsubAliases();
     };
   }, []);
 
@@ -217,13 +252,95 @@ export default function App() {
   };
 
   const handleConfigChange = (newConfig: MatchConfig) => {
-    setConfig(newConfig);
-    saveMatchConfigToCloud(newConfig).catch(() => {});
+    const cleanConfig = { ...newConfig };
+    // If the organizer manually edits fondoRecaudador/fondoEmi, drop stale pendingFondoRecaudador
+    if (
+      cleanConfig.pendingFondoRecaudador !== undefined &&
+      (newConfig.fondoRecaudador !== config.fondoRecaudador ||
+        newConfig.fondoEmi !== config.fondoEmi)
+    ) {
+      delete cleanConfig.pendingFondoRecaudador;
+    }
+    setConfig(cleanConfig);
+    saveMatchConfigToCloud(cleanConfig).catch(() => {});
   };
 
   const handleUpdateTeams = (newTeams: { blueTeamIds: string[]; orangeTeamIds: string[] }) => {
     setTeams(newTeams);
     saveTeamsToCloud(newTeams).catch(() => {});
+  };
+
+  // --- Mercado Pago Receipt Handlers ---
+  const handleSaveReceipt = (
+    newReceipt: MPReceipt,
+    autoCredit: boolean,
+    saveAlias?: { senderName: string; playerId: string }
+  ) => {
+    // 1. Save receipt to Firestore
+    saveReceiptToCloud(newReceipt).catch(() => {});
+    setReceipts((prev) => [newReceipt, ...prev.filter((r) => r.id !== newReceipt.id)]);
+
+    // 2. Auto-credit payment if enabled
+    if (autoCredit) {
+      setPlayers((prev) =>
+        prev.map((p) => {
+          if (p.id === newReceipt.playerId) {
+            const updated: Player = {
+              ...p,
+              paidToday: (p.paidToday || 0) + newReceipt.amount,
+              paymentMethod: 'mercadopago',
+              receiptCount: (p.receiptCount || 0) + 1,
+            };
+            savePlayerToCloud(updated).catch(() => {});
+            return updated;
+          }
+          return p;
+        })
+      );
+    }
+
+    // 3. Save alias if requested
+    if (saveAlias) {
+      const updatedAliases = {
+        ...aliasMap,
+        [saveAlias.senderName]: saveAlias.playerId,
+      };
+      setAliasMap(updatedAliases);
+      saveAliasesToCloud(updatedAliases).catch(() => {});
+    }
+
+    showToast(`Comprobante acreditado a "${newReceipt.playerName}"`);
+  };
+
+  const handleDeleteReceipt = (receiptId: string, revertAmount: boolean) => {
+    const r = receipts.find((x) => x.id === receiptId);
+    if (!r) return;
+
+    deleteReceiptFromCloud(receiptId).catch(() => {});
+    setReceipts((prev) => prev.filter((x) => x.id !== receiptId));
+
+    if (revertAmount) {
+      setPlayers((prev) =>
+        prev.map((p) => {
+          if (p.id === r.playerId) {
+            const updated: Player = {
+              ...p,
+              paidToday: Math.max(0, (p.paidToday || 0) - r.amount),
+              receiptCount: Math.max(0, (p.receiptCount || 1) - 1),
+            };
+            savePlayerToCloud(updated).catch(() => {});
+            return updated;
+          }
+          return p;
+        })
+      );
+    }
+    showToast('Comprobante eliminado');
+  };
+
+  const handleOpenReceiptModalForPlayer = (playerId: string) => {
+    setReceiptModalPlayerId(playerId);
+    setIsReceiptModalOpen(true);
   };
 
   // --- Bulk Actions ---
@@ -238,7 +355,7 @@ export default function App() {
     });
     setPlayers(updated);
     saveAllPlayersToCloud(updated).catch(() => {});
-    showToast(`Marcado pago exacto (${formatPesos(costPerPerson)} - seña) para los ${playedCount} que jugaron`);
+    showToast(`Marcado pago de cuota exacta (${formatPesos(costPerPerson)}) para los ${playedCount} que jugaron`);
   };
 
   const handleBulkResetPaid = () => {
@@ -249,6 +366,18 @@ export default function App() {
     }));
     setPlayers(updated);
     saveAllPlayersToCloud(updated).catch(() => {});
+
+    if (config.pendingFondoRecaudador !== undefined) {
+      const { pendingFondoRecaudador, ...restConfig } = config;
+      const promotedConfig: MatchConfig = {
+        ...restConfig,
+        fondoRecaudador: pendingFondoRecaudador,
+        fondoEmi: pendingFondoRecaudador,
+      };
+      setConfig(promotedConfig);
+      saveMatchConfigToCloud(promotedConfig).catch(() => {});
+    }
+
     showToast('Pagos y vueltos de hoy restablecidos a $0');
   };
 
@@ -263,7 +392,12 @@ export default function App() {
   };
 
   // --- Record Friday Closing Snapshot ---
-  const handleRecordCurrentMatch = () => {
+  const handleRequestClosing = () => {
+    setIsClosingPreviewMode(true);
+    setIsPreviewModalOpen(true);
+  };
+
+  const handleConfirmClosing = () => {
     const cashTotal = players.reduce(
       (acc, p) => (p.paymentMethod === 'efectivo' ? acc + (p.paidToday - (p.vuelto || 0)) : acc),
       0
@@ -319,31 +453,16 @@ export default function App() {
     setHistory((prev) => [newRecord, ...prev]);
     saveClosingRecordToCloud(newRecord).catch(() => {});
 
-    // Advance Fondo Recaudador in MatchConfig
+    // Store updated Fondo as pending so CashClosingBar keeps showing the live breakdown without double-counting
     const updatedConfig: MatchConfig = {
       ...config,
-      fondoRecaudador: updatedFondo,
-      fondoEmi: updatedFondo,
+      pendingFondoRecaudador: updatedFondo,
     };
     setConfig(updatedConfig);
     saveMatchConfigToCloud(updatedConfig).catch(() => {});
 
-    // Advance balances for next week
-    const advancedPlayers = players.map((p) => {
-      const newBal = calculateUpdatedBalance(p, costPerPerson);
-      return {
-        ...p,
-        initialBalance: newBal,
-        paidToday: 0,
-        vuelto: 0,
-        playedToday: p.playsNextWeek,
-      };
-    });
-    setPlayers(advancedPlayers);
-    saveAllPlayersToCloud(advancedPlayers).catch(() => {});
-
-    showToast('💾 ¡Cierre del viernes guardado en Firestore y saldos avanzados!');
-    setActiveTab('historial');
+    // Keep the players list and active tab intact as requested
+    showToast('💾 ¡Cierre guardado en Historial! La lista actual se mantuvo intacta.');
   };
 
   const handleDeleteHistoryRecord = (id: string) => {
@@ -355,7 +474,7 @@ export default function App() {
   // --- Load Today Reference (From user prompt) ---
   const handleLoadTodayReference = () => {
     const parsed = parseWhatsAppList(TODAY_REFERENCE_TEXT);
-    applyParsedData(parsed.title || 'Viernes 19hs - Señamos', parsed.playing, parsed.senas);
+    applyParsedData(parsed.title || 'Viernes 19hs', parsed.playing, parsed.senas);
     showToast('¡Lista de hoy cargada con éxito!');
   };
 
@@ -365,11 +484,20 @@ export default function App() {
     playing: ParsedWhatsAppItem[],
     senas: ParsedWhatsAppItem[]
   ) => {
-    const newTitle = title || config.matchTitle || 'Viernes 19hs - Señamos';
-    setConfig((prev) => ({
-      ...prev,
+    const newTitle = title || config.matchTitle || 'Viernes 19hs';
+    const { pendingFondoRecaudador, ...restConfig } = config;
+    const promotedFondo =
+      pendingFondoRecaudador !== undefined
+        ? pendingFondoRecaudador
+        : config.fondoRecaudador ?? config.fondoEmi ?? 0;
+
+    const nextConfig: MatchConfig = {
+      ...restConfig,
       matchTitle: newTitle,
-    }));
+      fondoRecaudador: promotedFondo,
+      fondoEmi: promotedFondo,
+    };
+    setConfig(nextConfig);
 
     // Reconstruct list in exact WhatsApp pasted order
     const updatedList: Player[] = [];
@@ -475,7 +603,7 @@ export default function App() {
     setPlayers(updatedList);
 
     // Atomically replace in Firestore so all other devices receive the exact list instantly
-    replacePlayersInCloud(updatedList, { matchTitle: newTitle })
+    replacePlayersInCloud(updatedList, nextConfig, true)
       .then(() => {
         showToast('¡Lista sincronizada en tiempo real con todos los dispositivos!');
       })
@@ -518,6 +646,20 @@ export default function App() {
     });
   }, [players, searchQuery, filterMode, costPerPerson]);
 
+  if (isPlayerReceiptMode) {
+    return (
+      <PlayerReceiptPortal
+        players={players}
+        config={config}
+        costPerPerson={costPerPerson}
+        receipts={receipts}
+        aliasMap={aliasMap}
+        isCloudReady={isCloudReady}
+        onSaveReceipt={handleSaveReceipt}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col pb-28">
       {/* Toast Notification */}
@@ -535,7 +677,12 @@ export default function App() {
         playedCount={playedCount}
         nextWeekCount={nextWeekCount}
         historyCount={history.length}
+        receiptCount={receipts.length}
         onOpenImportModal={() => setIsImportModalOpen(true)}
+        onOpenReceiptModal={() => {
+          setReceiptModalPlayerId(null);
+          setIsReceiptModalOpen(true);
+        }}
         onLoadTodayReference={handleLoadTodayReference}
         onResetToDefaults={handleResetToDefaults}
         onOpenAddPlayerModal={() => setIsAddPlayerModalOpen(true)}
@@ -565,6 +712,11 @@ export default function App() {
               onChangeConfig={handleConfigChange}
               playedCount={playedCount}
               costPerPerson={costPerPerson}
+              receiptCount={receipts.length}
+              onOpenReceiptModal={() => {
+                setReceiptModalPlayerId(null);
+                setIsReceiptModalOpen(true);
+              }}
               onBulkPayExact={handleBulkPayExact}
               onBulkResetPaid={handleBulkResetPaid}
               onSelectAllPlayedForNextWeek={handleSelectAllPlayedForNextWeek}
@@ -679,6 +831,7 @@ export default function App() {
                     costPerPerson={costPerPerson}
                     onUpdate={handleUpdatePlayer}
                     onRemoveGuest={handleRemoveGuest}
+                    onOpenReceiptModalForPlayer={handleOpenReceiptModalForPlayer}
                   />
                 ))
               )}
@@ -709,7 +862,7 @@ export default function App() {
           <HistoryView
             history={history}
             onDeleteRecord={handleDeleteHistoryRecord}
-            onRecordCurrentMatch={handleRecordCurrentMatch}
+            onRecordCurrentMatch={handleRequestClosing}
           />
         )}
       </main>
@@ -720,8 +873,11 @@ export default function App() {
           players={players}
           config={config}
           costPerPerson={costPerPerson}
-          onOpenWhatsAppPreview={() => setIsPreviewModalOpen(true)}
-          onRecordClosing={handleRecordCurrentMatch}
+          onOpenWhatsAppPreview={() => {
+            setIsClosingPreviewMode(false);
+            setIsPreviewModalOpen(true);
+          }}
+          onRecordClosing={handleRequestClosing}
         />
       )}
 
@@ -734,10 +890,15 @@ export default function App() {
 
       <WhatsAppPreviewModal
         isOpen={isPreviewModalOpen}
-        onClose={() => setIsPreviewModalOpen(false)}
+        onClose={() => {
+          setIsPreviewModalOpen(false);
+          setIsClosingPreviewMode(false);
+        }}
         players={players}
         config={config}
         costPerPerson={costPerPerson}
+        isClosingFlow={isClosingPreviewMode}
+        onConfirmClosing={handleConfirmClosing}
       />
 
       <AddPlayerModal
@@ -749,6 +910,18 @@ export default function App() {
       <ShareAppModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
+      />
+
+      <MPReceiptModal
+        isOpen={isReceiptModalOpen}
+        onClose={() => setIsReceiptModalOpen(false)}
+        players={players}
+        costPerPerson={costPerPerson}
+        initialPlayerId={receiptModalPlayerId}
+        receipts={receipts}
+        aliasMap={aliasMap}
+        onSaveReceipt={handleSaveReceipt}
+        onDeleteReceipt={handleDeleteReceipt}
       />
     </div>
   );

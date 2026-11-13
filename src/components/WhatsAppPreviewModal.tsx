@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Player, MatchConfig } from '../types/fulbito';
 import { generateWhatsAppMessage } from '../utils/whatsappHelpers';
-import { X, Copy, Check, MessageSquare } from 'lucide-react';
+import { X, Copy, Check, MessageSquare, Save } from 'lucide-react';
 
 interface WhatsAppPreviewModalProps {
   isOpen: boolean;
@@ -9,6 +9,8 @@ interface WhatsAppPreviewModalProps {
   players: Player[];
   config: MatchConfig;
   costPerPerson: number;
+  isClosingFlow?: boolean;
+  onConfirmClosing?: () => void;
 }
 
 export const WhatsAppPreviewModal: React.FC<WhatsAppPreviewModalProps> = ({
@@ -17,6 +19,8 @@ export const WhatsAppPreviewModal: React.FC<WhatsAppPreviewModalProps> = ({
   players,
   config,
   costPerPerson,
+  isClosingFlow = false,
+  onConfirmClosing,
 }) => {
   const [copied, setCopied] = useState(false);
 
@@ -34,9 +38,22 @@ export const WhatsAppPreviewModal: React.FC<WhatsAppPreviewModalProps> = ({
     }
   };
 
+  const handleCopyAndConfirm = async () => {
+    try {
+      await navigator.clipboard.writeText(messageText);
+      setCopied(true);
+    } catch {
+      // Ignore clipboard error if blocked
+    }
+    if (onConfirmClosing) {
+      onConfirmClosing();
+    }
+    onClose();
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg flex flex-col shadow-2xl overflow-hidden">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-zinc-800 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -45,10 +62,14 @@ export const WhatsAppPreviewModal: React.FC<WhatsAppPreviewModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-bold text-white">
-                Lista para WhatsApp
+                {isClosingFlow
+                  ? 'Antes de cerrar: Copiá para WhatsApp'
+                  : 'Lista para WhatsApp'}
               </h2>
               <p className="text-xs text-zinc-400">
-                Texto plano listo para pegar en el grupo
+                {isClosingFlow
+                  ? 'Copiá el mensaje con los saldos actualizados; la lista actual se mantendrá intacta'
+                  : 'Texto plano listo para pegar en el grupo'}
               </p>
             </div>
           </div>
@@ -61,7 +82,12 @@ export const WhatsAppPreviewModal: React.FC<WhatsAppPreviewModalProps> = ({
         </div>
 
         {/* Content - WhatsApp bubble preview */}
-        <div className="p-4 sm:p-5 bg-zinc-950/70">
+        <div className="p-4 sm:p-5 bg-zinc-950/70 overflow-y-auto flex-1 space-y-3">
+          {isClosingFlow && (
+            <div className="px-3.5 py-2.5 rounded-xl bg-emerald-950/40 border border-emerald-800/50 text-xs text-emerald-200 leading-relaxed">
+              Al confirmar el cierre se guarda la foto financiera en el <strong>Historial</strong> y <strong>tu lista de Finanzas queda tal como está</strong> (no se borra).
+            </div>
+          )}
           <div className="bg-[#121b22] border border-zinc-800/80 rounded-2xl p-4 shadow-inner">
             <pre className="text-xs sm:text-sm font-mono text-zinc-200 whitespace-pre-wrap leading-relaxed select-all">
               {messageText}
@@ -70,21 +96,25 @@ export const WhatsAppPreviewModal: React.FC<WhatsAppPreviewModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 sm:p-5 border-t border-zinc-800 flex items-center justify-between bg-zinc-900">
+        <div className="p-4 sm:p-5 border-t border-zinc-800 flex flex-wrap items-center justify-between gap-2 bg-zinc-900">
           <span className="text-xs text-zinc-500 font-mono">
             {messageText.split('\n').length} líneas
           </span>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 ml-auto">
             <button
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-medium text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+              className="px-3.5 py-2 rounded-xl text-xs font-medium text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
             >
-              Cerrar
+              {isClosingFlow ? 'Cancelar' : 'Cerrar'}
             </button>
             <button
               onClick={handleCopy}
-              className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-emerald-500 hover:bg-emerald-400 text-zinc-950 transition-all shadow-md"
+              className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+                isClosingFlow
+                  ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700'
+                  : 'bg-emerald-500 hover:bg-emerald-400 text-zinc-950 shadow-md'
+              }`}
             >
               {copied ? (
                 <>
@@ -98,6 +128,15 @@ export const WhatsAppPreviewModal: React.FC<WhatsAppPreviewModalProps> = ({
                 </>
               )}
             </button>
+            {isClosingFlow && onConfirmClosing && (
+              <button
+                onClick={handleCopyAndConfirm}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-emerald-500 hover:bg-emerald-400 text-zinc-950 transition-all shadow-md"
+              >
+                <Save className="w-4 h-4" />
+                <span>Copiar y Guardar Cierre</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

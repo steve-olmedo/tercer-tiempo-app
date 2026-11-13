@@ -15,7 +15,15 @@
         },
         "fondoEmi": {
           "type": "number",
-          "description": "Fondo guardado por Emi"
+          "description": "Fondo guardado por el recaudador (legacy alias)"
+        },
+        "fondoRecaudador": {
+          "type": "number",
+          "description": "Fondo acumulado del recaudador"
+        },
+        "pendingFondoRecaudador": {
+          "type": "number",
+          "description": "Fondo proyectado tras el cierre pendiente de aplicar cuando se reinicien pagos"
         },
         "matchTitle": {
           "type": "string",
@@ -33,7 +41,7 @@
           "maxLength": 20
         }
       },
-      "required": ["pitchCost", "depositPaid"]
+      "required": ["pitchCost"]
     },
     "Player": {
       "title": "Player",
@@ -51,7 +59,7 @@
         },
         "initialBalance": {
           "type": "number",
-          "description": "Saldo o seña previa acumulada"
+          "description": "Saldo previo acumulado"
         },
         "playedToday": {
           "type": "boolean",
@@ -77,6 +85,10 @@
         "playsNextWeek": {
           "type": "boolean",
           "description": "Si está anotado para el próximo viernes"
+        },
+        "receiptCount": {
+          "type": "number",
+          "description": "Cantidad de comprobantes subidos hoy"
         }
       },
       "required": ["name", "initialBalance", "playedToday", "paidToday", "paymentMethod", "playsNextWeek"]
@@ -106,7 +118,7 @@
         },
         "depositPaid": {
           "type": "number",
-          "description": "Seña previa"
+          "description": "Seña previa (opcional)"
         },
         "costPerPerson": {
           "type": "number",
@@ -154,6 +166,54 @@
         }
       },
       "required": ["blueTeamIds", "orangeTeamIds"]
+    },
+    "MPReceipt": {
+      "title": "MPReceipt",
+      "description": "Comprobante de transferencia de Mercado Pago vinculado a un jugador",
+      "type": "object",
+      "properties": {
+        "playerId": {
+          "type": "string",
+          "description": "ID del jugador al que se acredita"
+        },
+        "playerName": {
+          "type": "string",
+          "description": "Nombre del jugador en la lista"
+        },
+        "amount": {
+          "type": "number",
+          "description": "Monto transferido"
+        },
+        "senderName": {
+          "type": "string",
+          "description": "Nombre del titular en Mercado Pago"
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "Captura comprimida en base64"
+        },
+        "timestamp": {
+          "type": "number",
+          "description": "Timestamp de carga"
+        }
+      },
+      "required": ["playerId", "playerName", "amount", "timestamp"]
+    },
+    "PlayerAliases": {
+      "title": "PlayerAliases",
+      "description": "Mapeo aprendido entre titulares de Mercado Pago y jugadores",
+      "type": "object",
+      "properties": {
+        "aliases": {
+          "type": "object",
+          "description": "Diccionario titular normalizado -> playerId"
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "Timestamp de actualización"
+        }
+      },
+      "required": ["aliases"]
     }
   },
   "firestore": {
@@ -172,6 +232,14 @@
     "/teams/{teamId}": {
       "schema": "TeamAssignment",
       "description": "Asignación de equipos en tiempo real sincronizada entre dispositivos"
+    },
+    "/receipts/{receiptId}": {
+      "schema": "MPReceipt",
+      "description": "Comprobantes de Mercado Pago subidos por jugadores u organizadores"
+    },
+    "/aliases/{aliasId}": {
+      "schema": "PlayerAliases",
+      "description": "Asociación persistente de alias de Mercado Pago"
     }
   }
 }

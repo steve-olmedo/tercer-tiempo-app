@@ -85,7 +85,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
             </span>
           </div>
           <p className="text-xs text-zinc-400">
-            Cada cierre guarda la foto financiera exacta: quién jugó, cuánto pagó, señas y arqueo de caja.
+            Cada cierre guarda la foto financiera exacta: quién jugó, cuánto pagó, saldos y arqueo de caja.
           </p>
         </div>
 

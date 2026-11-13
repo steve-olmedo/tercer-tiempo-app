@@ -9,19 +9,24 @@ service cloud.firestore {
 
     function isValidConfig(data) {
       return data.pitchCost is number && data.pitchCost >= 0
-        && data.depositPaid is number && data.depositPaid >= 0
+        && (!('depositPaid' in data) || data.depositPaid is number)
+        && (!('fondoRecaudador' in data) || data.fondoRecaudador is number)
+        && (!('pendingFondoRecaudador' in data) || data.pendingFondoRecaudador is number)
         && (!('fondoEmi' in data) || data.fondoEmi is number)
+        && (!('recaudadorName' in data) || data.recaudadorName is string)
         && (!('matchTitle' in data) || (data.matchTitle is string && data.matchTitle.size() <= 100));
     }
 
     function isValidPlayer(data) {
       return data.name is string && data.name.size() > 0 && data.name.size() <= 80
-        && data.initialBalance is number
+        && (!('initialBalance' in data) || data.initialBalance is number)
         && data.playedToday is bool
         && data.paidToday is number && data.paidToday >= 0
         && data.paymentMethod in ['efectivo', 'mercadopago']
         && data.playsNextWeek is bool
         && (!('vuelto' in data) || data.vuelto is number)
+        && (!('mpAlias' in data) || data.mpAlias is string)
+        && (!('receiptCount' in data) || data.receiptCount is number)
         && (!('orderIndex' in data) || data.orderIndex is number);
     }
 
@@ -70,6 +75,20 @@ service cloud.firestore {
       allow get: if isValidId(teamId);
       allow list: if true;
       allow create, update, delete: if isValidId(teamId);
+    }
+
+    // Mercado Pago Receipts Collection
+    match /receipts/{receiptId} {
+      allow get: if isValidId(receiptId);
+      allow list: if true;
+      allow create, update, delete: if isValidId(receiptId);
+    }
+
+    // Player Aliases & Titular mapping
+    match /aliases/{aliasId} {
+      allow get: if isValidId(aliasId);
+      allow list: if true;
+      allow create, update, delete: if isValidId(aliasId);
     }
 
     // Default deny catch-all

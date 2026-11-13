@@ -119,15 +119,6 @@ export function calculateUpdatedBalance(
   return (player.initialBalance || 0) - matchDeduction + netPaid;
 }
 
-/**
- * Generates the WhatsApp copy text according to specification:
- * *Viernes 19hs - Señamos*
- * 1. Javi $2400
- * 2. Mo
- * ...
- * *Señas:*
- * Nardi $500
- */
 export function generateWhatsAppMessage(
   players: Player[],
   config: MatchConfig,
@@ -138,16 +129,7 @@ export function generateWhatsAppMessage(
     .filter((p) => p.playsNextWeek)
     .sort((a, b) => (a.orderIndex ?? 9999) - (b.orderIndex ?? 9999));
 
-  // Players who are NOT playing next week but have an updated balance != 0
-  const nonPlayingWithBalance = [...players]
-    .filter((p) => {
-      if (p.playsNextWeek) return false;
-      const updated = calculateUpdatedBalance(p, costPerPerson);
-      return updated !== 0;
-    })
-    .sort((a, b) => (a.orderIndex ?? 9999) - (b.orderIndex ?? 9999));
-
-  const header = `*${config.matchTitle || 'Viernes 19hs - Señamos'}*`;
+  const header = `*${config.matchTitle || 'Viernes 19hs'}*`;
 
   const numberedList = nextWeekPlayers
     .map((p, idx) => {
@@ -159,19 +141,7 @@ export function generateWhatsAppMessage(
     })
     .join('\n');
 
-  let senasSection = '';
-  if (nonPlayingWithBalance.length > 0) {
-    const senasLines = nonPlayingWithBalance
-      .map((p) => {
-        const updatedBalance = calculateUpdatedBalance(p, costPerPerson);
-        return `${p.name} ${formatPesos(updatedBalance)}`;
-      })
-      .join('\n');
-
-    senasSection = `\n\n*Señas:*\n${senasLines}`;
-  }
-
-  return `${header}\n${numberedList}${senasSection}`;
+  return `${header}\n${numberedList}`;
 }
 
 /**

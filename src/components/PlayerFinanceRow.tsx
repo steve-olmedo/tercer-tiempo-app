@@ -10,6 +10,7 @@ interface PlayerFinanceRowProps {
   index: number;
   onUpdate: (updated: Player) => void;
   onRemoveGuest?: (id: string) => void;
+  onOpenReceiptModalForPlayer?: (playerId: string) => void;
 }
 
 export const PlayerFinanceRow: React.FC<PlayerFinanceRowProps> = ({
@@ -18,6 +19,7 @@ export const PlayerFinanceRow: React.FC<PlayerFinanceRowProps> = ({
   index,
   onUpdate,
   onRemoveGuest,
+  onOpenReceiptModalForPlayer,
 }) => {
   const updatedBalance = calculateUpdatedBalance(player, costPerPerson);
   const amountDueToday = calculateAmountDueToday(player, costPerPerson);
@@ -59,7 +61,7 @@ export const PlayerFinanceRow: React.FC<PlayerFinanceRowProps> = ({
     });
   };
 
-  // Exacto pone lo que corresponde pagar hoy (6900 - seña previa)
+  // Pone la cuota correspondiente de hoy
   const handlePayExactMatch = () => {
     onUpdate({
       ...player,
@@ -102,22 +104,25 @@ export const PlayerFinanceRow: React.FC<PlayerFinanceRowProps> = ({
             )}
           </div>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
-            <span className="text-zinc-500 text-[11px]">Seña previa:</span>
-            <span
-              className={`font-mono text-xs font-semibold ${
-                player.initialBalance > 0
-                  ? 'text-green-500'
-                  : player.initialBalance < 0
-                  ? 'text-red-400'
-                  : 'text-zinc-400'
-              }`}
-            >
-              {formatPesos(player.initialBalance)}
-            </span>
+            {player.initialBalance !== 0 && (
+              <>
+                <span className="text-zinc-500 text-[11px]">Saldo previo:</span>
+                <span
+                  className={`font-mono text-xs font-semibold ${
+                    player.initialBalance > 0
+                      ? 'text-green-500'
+                      : 'text-red-400'
+                  }`}
+                >
+                  {formatPesos(player.initialBalance)}
+                </span>
+                <span className="text-zinc-600">•</span>
+              </>
+            )}
 
             {player.playedToday && (
               <span className="text-[11px] text-zinc-400 font-mono">
-                • Pone hoy:{' '}
+                Pone hoy:{' '}
                 <strong className={amountDueToday > 0 ? 'text-amber-400 font-bold' : 'text-emerald-400 font-medium'}>
                   {formatPesos(amountDueToday)}
                 </strong>
@@ -174,7 +179,7 @@ export const PlayerFinanceRow: React.FC<PlayerFinanceRowProps> = ({
             {player.playedToday && (
               <button
                 onClick={handlePayExactMatch}
-                title={`Pagar lo correspondiente hoy: ${formatPesos(amountDueToday)} (${formatPesos(costPerPerson)} - seña)`}
+                title={`Pagar cuota exacta de hoy: ${formatPesos(amountDueToday)}`}
                 className="px-1.5 py-1 text-[10px] font-mono rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors border border-zinc-700 whitespace-nowrap"
               >
                 Exacto
@@ -214,13 +219,13 @@ export const PlayerFinanceRow: React.FC<PlayerFinanceRowProps> = ({
           )}
         </div>
 
-        {/* Toggle: Método de Pago (Efectivo / MercadoPago) */}
-        <div>
+        {/* Toggle: Método de Pago (Efectivo / MercadoPago) + Receipt button */}
+        <div className="flex flex-col gap-1 items-center">
           <button
             onClick={handlePaymentMethodToggle}
             className={`flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors border w-full sm:w-auto ${
               player.paymentMethod === 'mercadopago'
-                ? 'bg-zinc-900 border-blue-900/80 text-blue-300 hover:bg-blue-950/40'
+                ? 'bg-zinc-900 border-sky-900/80 text-sky-300 hover:bg-sky-950/40'
                 : 'bg-zinc-900 border-green-900/80 text-green-300 hover:bg-green-950/40'
             }`}
             title={`Método: ${
@@ -229,7 +234,7 @@ export const PlayerFinanceRow: React.FC<PlayerFinanceRowProps> = ({
           >
             {player.paymentMethod === 'mercadopago' ? (
               <>
-                <Smartphone className="w-3.5 h-3.5 text-blue-400" />
+                <Smartphone className="w-3.5 h-3.5 text-sky-400" />
                 <span>MP</span>
               </>
             ) : (
@@ -239,6 +244,23 @@ export const PlayerFinanceRow: React.FC<PlayerFinanceRowProps> = ({
               </>
             )}
           </button>
+
+          {/* Quick receipt upload or view */}
+          {onOpenReceiptModalForPlayer && (
+            <button
+              onClick={() => onOpenReceiptModalForPlayer(player.id)}
+              className="text-[10px] text-zinc-500 hover:text-sky-400 hover:underline transition-colors flex items-center gap-0.5 whitespace-nowrap"
+              title="Subir o consultar comprobante MP de este jugador"
+            >
+              {player.receiptCount && player.receiptCount > 0 ? (
+                <span className="text-sky-400 font-semibold flex items-center gap-0.5">
+                  ✓ {player.receiptCount} comp.
+                </span>
+              ) : (
+                <span>+ Comprobante</span>
+              )}
+            </button>
+          )}
         </div>
 
         {/* Checkbox: ¿Juega próximo viernes? */}

@@ -134,12 +134,22 @@ export function subscribeToHistory(
   );
 }
 
+function stripUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
+  const clean: Record<string, unknown> = {};
+  Object.keys(obj).forEach((key) => {
+    if (obj[key] !== undefined) {
+      clean[key] = obj[key];
+    }
+  });
+  return clean as Partial<T>;
+}
+
 /**
  * Saves current match config to Firestore.
  */
 export async function saveMatchConfigToCloud(config: MatchConfig): Promise<void> {
   try {
-    await setDoc(doc(db, 'config', 'current'), config);
+    await setDoc(doc(db, 'config', 'current'), stripUndefined(config as unknown as Record<string, unknown>));
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, CONFIG_DOC_PATH);
   }
@@ -151,7 +161,7 @@ export async function saveMatchConfigToCloud(config: MatchConfig): Promise<void>
 export async function savePlayerToCloud(player: Player): Promise<void> {
   try {
     const { id, ...data } = player;
-    await setDoc(doc(db, PLAYERS_COLL_PATH, id), data, { merge: true });
+    await setDoc(doc(db, PLAYERS_COLL_PATH, id), stripUndefined(data as unknown as Record<string, unknown>), { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, `${PLAYERS_COLL_PATH}/${player.id}`);
   }
@@ -166,7 +176,7 @@ export async function saveAllPlayersToCloud(players: Player[]): Promise<void> {
     players.forEach((player) => {
       const { id, ...data } = player;
       const ref = doc(db, PLAYERS_COLL_PATH, id);
-      batch.set(ref, data, { merge: true });
+      batch.set(ref, stripUndefined(data as unknown as Record<string, unknown>), { merge: true });
     });
     await batch.commit();
   } catch (error) {
@@ -181,7 +191,8 @@ export async function saveAllPlayersToCloud(players: Player[]): Promise<void> {
  */
 export async function replacePlayersInCloud(
   updatedPlayers: Player[],
-  newConfig?: Partial<MatchConfig>
+  newConfig?: MatchConfig | Partial<MatchConfig>,
+  replaceConfigFull = false
 ): Promise<void> {
   try {
     const playersSnap = await getDocs(collection(db, PLAYERS_COLL_PATH));
@@ -199,13 +210,18 @@ export async function replacePlayersInCloud(
     updatedPlayers.forEach((player) => {
       const { id, ...data } = player;
       const ref = doc(db, PLAYERS_COLL_PATH, id);
-      batch.set(ref, data);
+      batch.set(ref, stripUndefined(data as unknown as Record<string, unknown>));
     });
 
     // 3. Update match config if provided
     if (newConfig) {
       const configRef = doc(db, 'config', 'current');
-      batch.set(configRef, newConfig, { merge: true });
+      const cleanCfg = stripUndefined(newConfig as unknown as Record<string, unknown>);
+      if (replaceConfigFull) {
+        batch.set(configRef, cleanCfg);
+      } else {
+        batch.set(configRef, cleanCfg, { merge: true });
+      }
     }
 
     await batch.commit();
@@ -231,7 +247,13 @@ export async function deletePlayerFromCloud(id: string): Promise<void> {
  */
 export async function saveClosingRecordToCloud(record: MatchClosingRecord): Promise<void> {
   try {
-    await setDoc(doc(db, HISTORY_COLL_PATH, record.id), record);
+    const cleanRecord = stripUndefined({
+      ...record,
+      playersSnapshot: record.playersSnapshot.map((s) =>
+        stripUndefined(s as unknown as Record<string, unknown>)
+      ),
+    } as unknown as Record<string, unknown>);
+    await setDoc(doc(db, HISTORY_COLL_PATH, record.id), cleanRecord);
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, `${HISTORY_COLL_PATH}/${record.id}`);
   }
@@ -292,6 +314,104 @@ export async function saveTeamsToCloud(teams: {
     });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, TEAMS_DOC_PATH);
+  }
+}
+
+const RECEIPTS_COLL_PATH = 'receipts';
+
+/**
+ * Subscribes to real-time Mercado Pago receipts uploaded for this match.
+ */
+export function subscribeToReceipts(
+  onUpdate: (receipts: import('../types/fulbito').MPReceipt[]) => void
+): () => void {
+  return onSnapshot(
+    collection(db, RECEIPTS_COLL_PATH),
+    (snapshot) => {
+      const list: import('../types/fulbito').MPReceipt[] = [];
+      snapshot.forEach((d) => {
+        list.push({ id: d.id, ...d.data() } as import('../types/fulbito').MPReceipt);
+      });
+      list.sort((a, b) => b.timestamp - a.timestamp);
+      onUpdate(list);
+    },
+    (error) => {
+      try {
+        handleFirestoreError(error, OperationType.GET, RECEIPTS_COLL_PATH);
+      } catch (e) {
+        console.error('Receipts subscription error:', e);
+      }
+    }
+  );
+}
+
+/**
+ * Saves a new receipt to Firestore.
+ */
+export async function saveReceiptToCloud(
+  receipt: import('../types/fulbito').MPReceipt
+): Promise<void> {
+  try {
+    const { id, ...data } = receipt;
+    await setDoc(
+      doc(db, RECEIPTS_COLL_PATH, id),
+      stripUndefined(data as unknown as Record<string, unknown>)
+    );
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, `${RECEIPTS_COLL_PATH}/${receipt.id}`);
+  }
+}
+
+/**
+ * Deletes a receipt from Firestore.
+ */
+export async function deleteReceiptFromCloud(id: string): Promise<void> {
+  try {
+    await deleteDoc(doc(db, RECEIPTS_COLL_PATH, id));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, `${RECEIPTS_COLL_PATH}/${id}`);
+  }
+}
+
+const ALIASES_DOC_PATH = 'aliases/mapping';
+
+/**
+ * Subscribes to player MP aliases mapping.
+ */
+export function subscribeToAliases(
+  onUpdate: (mapping: Record<string, string>) => void
+): () => void {
+  return onSnapshot(
+    doc(db, 'aliases', 'mapping'),
+    (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        onUpdate(data.aliases || {});
+      }
+    },
+    (error) => {
+      try {
+        handleFirestoreError(error, OperationType.GET, ALIASES_DOC_PATH);
+      } catch (e) {
+        console.error('Aliases subscription error:', e);
+      }
+    }
+  );
+}
+
+/**
+ * Saves aliases map to Firestore.
+ */
+export async function saveAliasesToCloud(
+  aliases: Record<string, string>
+): Promise<void> {
+  try {
+    await setDoc(doc(db, 'aliases', 'mapping'), {
+      aliases,
+      updatedAt: Date.now(),
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, ALIASES_DOC_PATH);
   }
 }
 

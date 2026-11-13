@@ -1,27 +1,42 @@
 export type PaymentMethod = 'efectivo' | 'mercadopago';
 
+export interface MPReceipt {
+  id: string;
+  playerId: string;            // ID del jugador asignado
+  playerName: string;          // Nombre/apodo del jugador al momento del comprobante
+  amount: number;              // Monto transferido (ej: $6.900)
+  senderName?: string;         // Nombre del titular en el comprobante de MP (ej: "Mariano Ariel Gómez")
+  senderAlias?: string;        // Alias o CVU remitente si figura
+  imageUrl?: string;           // Imagen en base64 de la captura
+  timestamp: number;           // Fecha/hora de subida
+  note?: string;               // Nota opcional
+}
+
 export interface Player {
   id: string;
   name: string;
   isGuest?: boolean;
-  initialBalance: number; // Saldo previo / seña anterior
-  playedToday: boolean;   // ¿Jugó hoy? (Default true en import)
-  paidToday: number;      // ¿Cuánto pagó hoy?
-  vuelto?: number;        // Vuelto solicitado / pedido (ej: paga $10.000 con $2.000 vuelto -> neto $8.000)
-  paymentMethod: PaymentMethod; // Efectivo o MercadoPago
-  playsNextWeek: boolean; // ¿Juega el próximo viernes?
-  orderIndex?: number;    // Posición exacta en la lista del mensaje de WhatsApp
+  initialBalance: number;      // Saldo previo (a favor si >0, deuda si <0)
+  playedToday: boolean;        // ¿Jugó hoy? (Default true)
+  paidToday: number;           // ¿Cuánto pagó hoy?
+  vuelto?: number;             // Vuelto pedido (ej: paga $10.000 y pide $2.000 de vuelto -> neto $8.000)
+  paymentMethod: PaymentMethod;// Efectivo o Mercado Pago
+  playsNextWeek: boolean;      // ¿Juega el próximo viernes?
+  orderIndex?: number;         // Posición exacta en la lista del mensaje
+  mpAlias?: string;            // Titular o alias asociado en Mercado Pago para auto-reconocimiento
+  receiptCount?: number;       // Cantidad de comprobantes subidos hoy
 }
 
 export interface MatchConfig {
-  pitchCost: number;       // Costo Total de la Cancha (ej: $96.000)
-  depositPaid: number;     // Seña previa cancha (fija en complejo, ej: $10.000)
-  fondoRecaudador?: number;// Fondo Recaudador (monto en custodia del recaudador)
-  fondoEmi?: number;       // Retrocompatibilidad con datos anteriores
-  recaudadorName?: string; // Nombre del recaudador (opcional, ej: "Emi" o "Recaudador")
-  matchTitle: string;      // Título / encabezado
-  pitchName: string;       // Nombre de la cancha (ej: "Fútbol 7")
-  date: string;            // Fecha del partido
+  pitchCost: number;           // Costo Total de la Cancha (ej: $96.000)
+  depositPaid?: number;        // Compatibilidad con registros antiguos (opcional, ya no se usa seña)
+  fondoRecaudador?: number;    // Fondo Recaudador (monto en custodia del recaudador)
+  pendingFondoRecaudador?: number; // Fondo resultante tras cierre guardado (se aplica al iniciar próxima fecha)
+  fondoEmi?: number;           // Retrocompatibilidad con datos anteriores
+  recaudadorName?: string;     // Nombre del recaudador (opcional, ej: "Recaudador" o "Emi")
+  matchTitle: string;          // Título / encabezado del partido
+  pitchName: string;           // Nombre de la cancha (ej: "Fútbol 7")
+  date: string;                // Fecha del partido
 }
 
 export type TacticalRole = 'ARQ' | 'DEF_IZQ' | 'DEF_CEN' | 'DEF_DER' | 'MED' | 'DEL_IZQ' | 'DEL_DER';
@@ -70,7 +85,7 @@ export interface MatchClosingRecord {
   timestamp: number;
   matchTitle: string;
   pitchCost: number;
-  depositPaid: number;
+  depositPaid?: number;
   fondoRecaudador?: number;
   fondoEmi?: number;
   shortfallFromFund?: number; // Cuánto se sacó del Fondo Recaudador para pagar la cancha

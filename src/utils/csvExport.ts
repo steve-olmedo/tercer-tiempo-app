@@ -11,7 +11,9 @@ export function generateMatchCSV(record: MatchClosingRecord): string {
   lines.push(`Fecha;${record.date}`);
   lines.push(`Partido;${record.matchTitle}`);
   lines.push(`Costo Total Cancha;$${record.pitchCost}`);
-  lines.push(`Seña Previa Cancha (Fija Complejo);$${record.depositPaid}`);
+  if (record.depositPaid) {
+    lines.push(`Seña Cancha;$${record.depositPaid}`);
+  }
   const fondoVal = record.fondoRecaudador ?? record.fondoEmi ?? 0;
   if (fondoVal > 0) {
     lines.push(`Fondo Recaudador;$${fondoVal}`);
@@ -67,7 +69,7 @@ export function generateGoogleSheetsTSV(record: MatchClosingRecord): string {
 
   const fondoVal = record.fondoRecaudador ?? record.fondoEmi ?? 0;
   lines.push(`PARTIDO: ${record.matchTitle}\tFECHA: ${record.date}`);
-  lines.push(`Costo Cancha: $${record.pitchCost}\tSeña Cancha: $${record.depositPaid}${fondoVal ? `\tFondo Recaudador: $${fondoVal}` : ''}${record.shortfallFromFund ? `\tAporte Fondo: -$${record.shortfallFromFund}` : ''}\tCuota: $${record.costPerPerson}`);
+  lines.push(`Costo Cancha: $${record.pitchCost}${fondoVal ? `\tFondo Recaudador: $${fondoVal}` : ''}${record.shortfallFromFund ? `\tAporte Fondo: -$${record.shortfallFromFund}` : ''}\tCuota: $${record.costPerPerson}`);
   lines.push(`Efectivo: $${record.cashTotal}\tMercadoPago: $${record.mpTotal}\tRecaudado: $${record.totalCollected}\tJugaron: ${record.playedCount}`);
   lines.push('');
   lines.push('N°\tJugador\tTipo\t¿Jugó?\tCuota\tPagó\tVuelto\tNeto\tMétodo\tSaldo Anterior\tSaldo Nuevo\t¿Próx. Viernes?');

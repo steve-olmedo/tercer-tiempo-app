@@ -26,7 +26,7 @@ export const WhatsAppImportModal: React.FC<WhatsAppImportModalProps> = ({
   const parsed = parseWhatsAppList(rawText);
 
   const handleApply = () => {
-    onImport(parsed.title || 'Viernes 19hs - Señamos', parsed.playing, parsed.senas);
+    onImport(parsed.title || 'Viernes 19hs', parsed.playing, parsed.senas);
     onClose();
   };
 
@@ -79,7 +79,7 @@ export const WhatsAppImportModal: React.FC<WhatsAppImportModalProps> = ({
             rows={7}
             value={rawText}
             onChange={(e) => setRawText(e.target.value)}
-            placeholder="Pega aquí el mensaje con la lista numerada y las señas..."
+            placeholder="Pega aquí el mensaje con la lista de jugadores..."
             className="w-full p-3 bg-zinc-950 border border-zinc-800 rounded-xl text-base sm:text-xs font-mono text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500/70"
           />
 
@@ -91,7 +91,7 @@ export const WhatsAppImportModal: React.FC<WhatsAppImportModalProps> = ({
                 Elementos detectados en tiempo real
               </span>
               <span className="text-zinc-500 font-mono">
-                {parsed.playing.length} en lista + {parsed.senas.length} señas
+                {parsed.playing.length} en lista
               </span>
             </div>
 

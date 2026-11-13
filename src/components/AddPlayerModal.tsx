@@ -85,7 +85,7 @@ export const AddPlayerModal: React.FC<AddPlayerModalProps> = ({
 
           <div>
             <label className="text-xs font-semibold text-zinc-300 block mb-1.5">
-              Saldo Inicial / Seña previa ($)
+              Saldo Previo ($) (A favor o deuda)
             </label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 font-mono text-sm">

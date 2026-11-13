@@ -7,7 +7,8 @@ import {
   ClipboardPaste, 
   RotateCcw, 
   Sparkles,
-  UserPlus
+  UserPlus,
+  Smartphone
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -16,7 +17,9 @@ interface HeaderProps {
   playedCount: number;
   nextWeekCount: number;
   historyCount: number;
+  receiptCount?: number;
   onOpenImportModal: () => void;
+  onOpenReceiptModal: () => void;
   onLoadTodayReference: () => void;
   onResetToDefaults: () => void;
   onOpenAddPlayerModal: () => void;
@@ -29,7 +32,9 @@ export const Header: React.FC<HeaderProps> = ({
   playedCount,
   nextWeekCount,
   historyCount,
+  receiptCount,
   onOpenImportModal,
+  onOpenReceiptModal,
   onLoadTodayReference,
   onResetToDefaults,
   onOpenAddPlayerModal,
@@ -58,12 +63,27 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Quick Utility Actions in Top Row */}
           <div className="flex items-center gap-1.5 sm:gap-2">
             <button
+              onClick={onOpenReceiptModal}
+              title="Subir o revisar comprobantes de Mercado Pago"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/30 transition-colors shadow-sm"
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              <span className="hidden xs:inline">Comprobantes MP</span>
+              <span className="xs:hidden">MP</span>
+              {receiptCount !== undefined && receiptCount > 0 && (
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-sky-500 text-white font-bold leading-none">
+                  {receiptCount}
+                </span>
+              )}
+            </button>
+
+            <button
               onClick={onOpenShareModal}
               title="Compartir enlace con el grupo"
               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-700/80 transition-colors"
             >
               <Share2 className="w-3.5 h-3.5 text-zinc-300" />
-              <span>Compartir</span>
+              <span className="hidden sm:inline">Compartir</span>
             </button>
 
             <button

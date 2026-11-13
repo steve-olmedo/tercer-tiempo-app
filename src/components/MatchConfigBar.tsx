@@ -8,6 +8,8 @@ interface MatchConfigBarProps {
   onChangeConfig: (newConfig: MatchConfig) => void;
   playedCount: number;
   costPerPerson: number;
+  receiptCount?: number;
+  onOpenReceiptModal?: () => void;
   onBulkPayExact: () => void;
   onBulkResetPaid: () => void;
   onSelectAllPlayedForNextWeek: () => void;
@@ -18,6 +20,8 @@ export const MatchConfigBar: React.FC<MatchConfigBarProps> = ({
   onChangeConfig,
   playedCount,
   costPerPerson,
+  receiptCount = 0,
+  onOpenReceiptModal,
   onBulkPayExact,
   onBulkResetPaid,
   onSelectAllPlayedForNextWeek,
@@ -49,31 +53,6 @@ export const MatchConfigBar: React.FC<MatchConfigBarProps> = ({
               }
               className="w-full pl-7 pr-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-base sm:text-sm font-mono text-zinc-100 focus:outline-none focus:border-green-600 transition-colors"
               placeholder="96000"
-            />
-          </div>
-        </div>
-
-        {/* Seña previa cancha */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-zinc-400 flex items-center justify-between">
-            <span className="flex items-center gap-1.5">
-              <DollarSign className="w-3.5 h-3.5 text-zinc-400" />
-              Seña previa cancha
-            </span>
-            <span className="text-[11px] text-zinc-500">Fija en complejo</span>
-          </label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 font-mono text-sm">$</span>
-            <input
-              type="number"
-              min="0"
-              step="500"
-              value={config.depositPaid || ''}
-              onChange={(e) =>
-                onChangeConfig({ ...config, depositPaid: Math.max(0, Number(e.target.value) || 0) })
-              }
-              className="w-full pl-7 pr-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-base sm:text-sm font-mono text-zinc-100 focus:outline-none focus:border-green-600 transition-colors"
-              placeholder="10000"
             />
           </div>
         </div>
@@ -118,12 +97,37 @@ export const MatchConfigBar: React.FC<MatchConfigBarProps> = ({
               <span className="text-xs font-normal text-zinc-400 ml-1">c/u</span>
             </div>
             <div className="text-[11px] text-zinc-500 font-mono text-right">
-              <div>Cancha total: {formatPesos(config.pitchCost)}</div>
+              <div>Cancha: {formatPesos(config.pitchCost)}</div>
               {currentFondoRecaudador > 0 && (
-                <div className="text-amber-400/90">Fondo Rec.: {formatPesos(currentFondoRecaudador)}</div>
+                <div className="text-amber-400/90">Fondo: {formatPesos(currentFondoRecaudador)}</div>
               )}
             </div>
           </div>
+        </div>
+
+        {/* Tarjeta / Botón Rápido: Comprobantes Mercado Pago */}
+        <div className="bg-gradient-to-br from-sky-950/30 to-zinc-950 border border-sky-900/40 rounded-xl p-3 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-sky-300 flex items-center gap-1.5">
+              <span>📱</span> Comprobantes MP
+            </span>
+            {receiptCount > 0 && (
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-sky-500/20 text-sky-300 font-bold">
+                {receiptCount} subidos
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] text-zinc-400 mt-1 line-clamp-1">
+            Subir captura y acreditar a jugador
+          </p>
+          {onOpenReceiptModal && (
+            <button
+              onClick={onOpenReceiptModal}
+              className="mt-2 w-full py-1.5 px-3 rounded-lg text-xs font-semibold bg-sky-600 hover:bg-sky-500 text-white transition-colors text-center shadow-sm"
+            >
+              + Subir Comprobante MP
+            </button>
+          )}
         </div>
       </div>
 
@@ -138,7 +142,7 @@ export const MatchConfigBar: React.FC<MatchConfigBarProps> = ({
             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-800/70 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-700/50 transition-colors"
           >
             <CheckCheck className="w-3.5 h-3.5 text-green-500" />
-            <span>Todos los que jugaron pagaron lo que correspondía (6900 - seña)</span>
+            <span>Todos los que jugaron pagaron cuota exacta ({formatPesos(costPerPerson)})</span>
           </button>
           <button
             onClick={onSelectAllPlayedForNextWeek}

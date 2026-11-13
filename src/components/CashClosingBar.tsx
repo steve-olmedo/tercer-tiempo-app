@@ -100,13 +100,15 @@ export const CashClosingBar: React.FC<CashClosingBarProps> = ({
           {/* Card 2: Pago Cancha Hoy */}
           <div className="p-3 bg-zinc-950/80 rounded-xl border border-zinc-800/80">
             <span className="text-[11px] font-medium text-zinc-400 block mb-1">
-              Pago Cancha Viernes
+              Costo Cancha Viernes
             </span>
             <div className="text-lg font-bold font-mono text-zinc-200">
               {formatPesos(courtCost)}
             </div>
             <p className="text-xs text-zinc-500 mt-1">
-              Seña previa cancha: {formatPesos(config.depositPaid)} (fija en complejo)
+              {totalCollected >= courtCost
+                ? 'Total cubierto con la recaudación'
+                : `Faltan ${formatPesos(courtCost - totalCollected)} (del Fondo Recaudador)`}
             </p>
           </div>
 
@@ -139,9 +141,9 @@ export const CashClosingBar: React.FC<CashClosingBarProps> = ({
             </div>
             <p className="text-xs text-zinc-500 mt-1">
               {shortfall > 0
-                ? `Recaudador cubre $${formatPesos(shortfall)} del fondo para pagar la cancha`
+                ? `Recaudador cubre ${formatPesos(shortfall)} del fondo para pagar la cancha`
                 : surplus > 0
-                ? `Sobrante de $${formatPesos(surplus)} se suma al fondo`
+                ? `Sobrante de ${formatPesos(surplus)} se suma al fondo`
                 : 'Recaudación de hoy cubre exacto la cancha'}
             </p>
           </div>
@@ -149,7 +151,7 @@ export const CashClosingBar: React.FC<CashClosingBarProps> = ({
           {/* Card 4: Saldo Acumulado del Grupo */}
           <div className="p-3 bg-zinc-950/80 rounded-xl border border-zinc-800/80">
             <span className="text-[11px] font-medium text-zinc-400 block mb-1">
-              Bolsa Neta de Señas (Grupo)
+              Saldos del Grupo
             </span>
             <div
               className={`text-lg font-bold font-mono ${
