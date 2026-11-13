@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Player, MatchConfig, MatchClosingRecord, PlayerMatchSnapshot, MPReceipt } from './types/fulbito';
 import {
   INITIAL_BASE_PLAYERS,
@@ -59,6 +59,13 @@ import {
 const STORAGE_KEY_PLAYERS = 'el-tercer-tiempo-players-v1';
 const STORAGE_KEY_CONFIG = 'el-tercer-tiempo-config-v1';
 const STORAGE_KEY_HISTORY = 'el-tercer-tiempo-history-v1';
+
+const getLocalDateISO = (d = new Date()) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 export default function App() {
   // --- Persistent State ---
@@ -123,6 +130,9 @@ export default function App() {
   const [aliasMap, setAliasMap] = useState<Record<string, string>>({});
 
   const [isCloudReady, setIsCloudReady] = useState(false);
+  const [hasCloudConfig, setHasCloudConfig] = useState(false);
+  const [hasCloudPlayers, setHasCloudPlayers] = useState(false);
+  const autoRolledSessionRef = useRef<string | null>(null);
   const [teams, setTeams] = useState<{ blueTeamIds: string[]; orangeTeamIds: string[] }>({
     blueTeamIds: [],
     orangeTeamIds: [],
@@ -133,11 +143,13 @@ export default function App() {
     // 1. Immediately attach real-time snapshot listeners
     const unsubConfig = subscribeToMatchConfig((cloudConfig) => {
       setConfig(cloudConfig);
+      setHasCloudConfig(true);
       setIsCloudReady(true);
     });
 
     const unsubPlayers = subscribeToPlayers((cloudPlayers) => {
       setPlayers(cloudPlayers);
+      setHasCloudPlayers(true);
       setIsCloudReady(true);
     });
 
@@ -225,6 +237,13 @@ export default function App() {
     return calculateCostPerPerson(config.pitchCost, playedCount);
   }, [config.pitchCost, playedCount]);
 
+  const activeSessionId = config.currentSessionId || 'default';
+
+  const activeReceipts = useMemo(
+    () => receipts.filter((r) => (r.sessionId || 'default') === activeSessionId),
+    [receipts, activeSessionId]
+  );
+
   // --- Player handlers ---
   const handleUpdatePlayer = (updated: Player) => {
     setPlayers((prev) =>
@@ -276,18 +295,23 @@ export default function App() {
     autoCredit: boolean,
     saveAlias?: { senderName: string; playerId: string }
   ) => {
+    const receiptWithSession: MPReceipt = {
+      ...newReceipt,
+      sessionId: newReceipt.sessionId || activeSessionId,
+    };
+
     // 1. Save receipt to Firestore
-    saveReceiptToCloud(newReceipt).catch(() => {});
-    setReceipts((prev) => [newReceipt, ...prev.filter((r) => r.id !== newReceipt.id)]);
+    saveReceiptToCloud(receiptWithSession).catch(() => {});
+    setReceipts((prev) => [receiptWithSession, ...prev.filter((r) => r.id !== receiptWithSession.id)]);
 
     // 2. Auto-credit payment if enabled
     if (autoCredit) {
       setPlayers((prev) =>
         prev.map((p) => {
-          if (p.id === newReceipt.playerId) {
+          if (p.id === receiptWithSession.playerId) {
             const updated: Player = {
               ...p,
-              paidToday: (p.paidToday || 0) + newReceipt.amount,
+              paidToday: (p.paidToday || 0) + receiptWithSession.amount,
               paymentMethod: 'mercadopago',
               receiptCount: (p.receiptCount || 0) + 1,
             };
@@ -391,6 +415,77 @@ export default function App() {
     showToast('Los 14 que jugaron hoy quedaron anotados para el próximo viernes');
   };
 
+  // --- Start New Weekly Collection (Manual or Automatic Next Friday) ---
+  const handleStartNewCollection = (isAuto = false) => {
+    const todayISO = getLocalDateISO();
+    const newSessionId = isAuto ? `session-${todayISO}` : `session-${Date.now()}`;
+    const { pendingFondoRecaudador, ...restConfig } = config;
+    const promotedFondo =
+      pendingFondoRecaudador !== undefined
+        ? pendingFondoRecaudador
+        : config.fondoRecaudador ?? config.fondoEmi ?? 0;
+
+    const nextConfig: MatchConfig = {
+      ...restConfig,
+      fondoRecaudador: promotedFondo,
+      fondoEmi: promotedFondo,
+      date: todayISO,
+      currentSessionId: newSessionId,
+      currentSessionDate: todayISO,
+      currentSessionClosed: false,
+    };
+
+    const advancedPlayers: Player[] = players.map((p) => ({
+      ...p,
+      initialBalance: calculateUpdatedBalance(p, costPerPerson),
+      paidToday: 0,
+      vuelto: 0,
+      receiptCount: 0,
+      playedToday: p.playsNextWeek,
+    }));
+
+    setConfig(nextConfig);
+    setPlayers(advancedPlayers);
+
+    replacePlayersInCloud(advancedPlayers, nextConfig, true)
+      .then(() => {
+        showToast(
+          isAuto
+            ? '✨ ¡Nuevo viernes! Se inició automáticamente una nueva recolección.'
+            : '✨ ¡Nueva recolección iniciada! Los comprobantes anteriores quedaron archivados.'
+        );
+      })
+      .catch(() => {
+        showToast('Nueva recolección iniciada localmente (error al sincronizar)');
+      });
+  };
+
+  // Automatic rollover to a new collection when the next Friday/week arrives after a saved closing
+  useEffect(() => {
+    if (!hasCloudConfig || !hasCloudPlayers) return;
+    if (!config.currentSessionClosed || !config.lastClosedAt) return;
+
+    const todayISO = getLocalDateISO();
+    const closedDateISO =
+      config.currentSessionDate || getLocalDateISO(new Date(config.lastClosedAt));
+    const daysElapsed = (Date.now() - config.lastClosedAt) / (1000 * 60 * 60 * 24);
+    const isNewFriday = new Date().getDay() === 5 && todayISO > closedDateISO;
+
+    if (todayISO > closedDateISO && (daysElapsed >= 5 || (isNewFriday && daysElapsed >= 3))) {
+      const sessionKey = config.currentSessionId || 'default';
+      if (autoRolledSessionRef.current === sessionKey) return;
+      autoRolledSessionRef.current = sessionKey;
+      handleStartNewCollection(true);
+    }
+  }, [
+    hasCloudConfig,
+    hasCloudPlayers,
+    config.currentSessionClosed,
+    config.lastClosedAt,
+    config.currentSessionDate,
+    config.currentSessionId,
+  ]);
+
   // --- Record Friday Closing Snapshot ---
   const handleRequestClosing = () => {
     setIsClosingPreviewMode(true);
@@ -431,8 +526,10 @@ export default function App() {
       };
     });
 
+    const todayISO = getLocalDateISO();
     const newRecord: MatchClosingRecord = {
       id: `closing-${Date.now()}`,
+      sessionId: activeSessionId,
       date: config.date || new Date().toLocaleDateString('es-AR'),
       timestamp: Date.now(),
       matchTitle: config.matchTitle || 'Partido de los Viernes',
@@ -453,10 +550,14 @@ export default function App() {
     setHistory((prev) => [newRecord, ...prev]);
     saveClosingRecordToCloud(newRecord).catch(() => {});
 
-    // Store updated Fondo as pending so CashClosingBar keeps showing the live breakdown without double-counting
+    // Store updated Fondo as pending & mark current Friday session closed (keeps list intact until next Friday / manual reset)
     const updatedConfig: MatchConfig = {
       ...config,
       pendingFondoRecaudador: updatedFondo,
+      currentSessionId: activeSessionId,
+      currentSessionDate: config.currentSessionDate || todayISO,
+      currentSessionClosed: true,
+      lastClosedAt: Date.now(),
     };
     setConfig(updatedConfig);
     saveMatchConfigToCloud(updatedConfig).catch(() => {});
@@ -485,6 +586,12 @@ export default function App() {
     senas: ParsedWhatsAppItem[]
   ) => {
     const newTitle = title || config.matchTitle || 'Viernes 19hs';
+    const todayISO = getLocalDateISO();
+    const startingNewAfterClosing = Boolean(config.currentSessionClosed);
+    const targetSessionId = startingNewAfterClosing
+      ? `session-${Date.now()}`
+      : activeSessionId;
+
     const { pendingFondoRecaudador, ...restConfig } = config;
     const promotedFondo =
       pendingFondoRecaudador !== undefined
@@ -496,6 +603,12 @@ export default function App() {
       matchTitle: newTitle,
       fondoRecaudador: promotedFondo,
       fondoEmi: promotedFondo,
+      currentSessionId: targetSessionId,
+      currentSessionDate: startingNewAfterClosing
+        ? todayISO
+        : config.currentSessionDate || todayISO,
+      currentSessionClosed: false,
+      ...(startingNewAfterClosing ? { date: todayISO } : {}),
     };
     setConfig(nextConfig);
 
@@ -509,6 +622,53 @@ export default function App() {
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/[\s\-_]/g, '');
+
+    const getPreservedPayment = (
+      match: Player | undefined,
+      normItem: string,
+      playerId: string
+    ) => {
+      // If the previous Friday was already closed, start clean for the new Friday
+      if (startingNewAfterClosing) {
+        return {
+          paidToday: 0,
+          vuelto: 0,
+          paymentMethod: match?.paymentMethod || ('mercadopago' as const),
+          receiptCount: 0,
+        };
+      }
+
+      // Same active Friday: preserve payments & receipts already loaded!
+      const matchingReceipts = activeReceipts.filter(
+        (r) => r.playerId === playerId || normalize(r.playerName) === normItem
+      );
+      const receiptsSum = matchingReceipts.reduce((sum, r) => sum + (r.amount || 0), 0);
+
+      if (match) {
+        const hasExistingPayment = (match.paidToday || 0) > 0 || (match.vuelto || 0) > 0;
+        const paidToday = hasExistingPayment ? match.paidToday : receiptsSum;
+        const receiptCount = Math.max(match.receiptCount || 0, matchingReceipts.length);
+        const paymentMethod =
+          hasExistingPayment
+            ? match.paymentMethod
+            : matchingReceipts.length > 0
+            ? ('mercadopago' as const)
+            : match.paymentMethod;
+        return {
+          paidToday,
+          vuelto: match.vuelto || 0,
+          paymentMethod,
+          receiptCount,
+        };
+      }
+
+      return {
+        paidToday: receiptsSum,
+        vuelto: 0,
+        paymentMethod: 'mercadopago' as const,
+        receiptCount: matchingReceipts.length,
+      };
+    };
 
     // 1. Process playing items (1..14) - in exact sequence, default playedToday=true & playsNextWeek=true
     playing.forEach((item, index) => {
@@ -528,19 +688,23 @@ export default function App() {
 
       if (match) {
         usedIds.add(match.id);
+        const preserved = getPreservedPayment(match, normItem, match.id);
         updatedList.push({
           ...match,
           name: match.name,
           initialBalance: item.amount,
           playedToday: true,
           playsNextWeek: true,
-          paidToday: 0,
-          vuelto: 0,
+          paidToday: preserved.paidToday,
+          vuelto: preserved.vuelto,
+          paymentMethod: preserved.paymentMethod,
+          receiptCount: preserved.receiptCount,
           orderIndex: index,
         });
       } else {
         const newId = `guest-${index}-${Date.now()}`;
         usedIds.add(newId);
+        const preserved = getPreservedPayment(undefined, normItem, newId);
         updatedList.push({
           id: newId,
           name: item.name,
@@ -548,9 +712,10 @@ export default function App() {
           initialBalance: item.amount,
           playedToday: true,
           playsNextWeek: true,
-          paidToday: 0,
-          vuelto: 0,
-          paymentMethod: 'mercadopago',
+          paidToday: preserved.paidToday,
+          vuelto: preserved.vuelto,
+          paymentMethod: preserved.paymentMethod,
+          receiptCount: preserved.receiptCount,
           orderIndex: index,
         });
       }
@@ -573,27 +738,32 @@ export default function App() {
 
       if (match) {
         usedIds.add(match.id);
+        const preserved = getPreservedPayment(match, normItem, match.id);
         updatedList.push({
           ...match,
           initialBalance: item.amount,
           playedToday: false,
           playsNextWeek: false,
-          paidToday: 0,
-          vuelto: 0,
+          paidToday: preserved.paidToday,
+          vuelto: preserved.vuelto,
+          paymentMethod: preserved.paymentMethod,
+          receiptCount: preserved.receiptCount,
           orderIndex: orderIdx,
         });
       } else {
         const newId = `sena-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
         usedIds.add(newId);
+        const preserved = getPreservedPayment(undefined, normItem, newId);
         updatedList.push({
           id: newId,
           name: item.name,
           initialBalance: item.amount,
           playedToday: false,
           playsNextWeek: false,
-          paidToday: 0,
-          vuelto: 0,
-          paymentMethod: 'mercadopago',
+          paidToday: preserved.paidToday,
+          vuelto: preserved.vuelto,
+          paymentMethod: preserved.paymentMethod,
+          receiptCount: preserved.receiptCount,
           orderIndex: orderIdx,
         });
       }
@@ -605,7 +775,11 @@ export default function App() {
     // Atomically replace in Firestore so all other devices receive the exact list instantly
     replacePlayersInCloud(updatedList, nextConfig, true)
       .then(() => {
-        showToast('¡Lista sincronizada en tiempo real con todos los dispositivos!');
+        if (!startingNewAfterClosing && activeReceipts.length > 0) {
+          showToast('¡Lista actualizada! Los comprobantes y pagos cargados hoy se conservaron.');
+        } else {
+          showToast('¡Lista sincronizada en tiempo real con todos los dispositivos!');
+        }
       })
       .catch((err) => {
         console.error('Error sincronizando con Firestore:', err);
@@ -652,7 +826,7 @@ export default function App() {
         players={players}
         config={config}
         costPerPerson={costPerPerson}
-        receipts={receipts}
+        receipts={activeReceipts}
         aliasMap={aliasMap}
         isCloudReady={isCloudReady}
         onSaveReceipt={handleSaveReceipt}
@@ -677,7 +851,7 @@ export default function App() {
         playedCount={playedCount}
         nextWeekCount={nextWeekCount}
         historyCount={history.length}
-        receiptCount={receipts.length}
+        receiptCount={activeReceipts.length}
         onOpenImportModal={() => setIsImportModalOpen(true)}
         onOpenReceiptModal={() => {
           setReceiptModalPlayerId(null);
@@ -712,7 +886,7 @@ export default function App() {
               onChangeConfig={handleConfigChange}
               playedCount={playedCount}
               costPerPerson={costPerPerson}
-              receiptCount={receipts.length}
+              receiptCount={activeReceipts.length}
               onOpenReceiptModal={() => {
                 setReceiptModalPlayerId(null);
                 setIsReceiptModalOpen(true);
@@ -720,6 +894,7 @@ export default function App() {
               onBulkPayExact={handleBulkPayExact}
               onBulkResetPaid={handleBulkResetPaid}
               onSelectAllPlayedForNextWeek={handleSelectAllPlayedForNextWeek}
+              onStartNewCollection={() => handleStartNewCollection(false)}
             />
 
             {/* List Controls: Search & Filters */}
@@ -861,6 +1036,7 @@ export default function App() {
           /* Module 3: History & Spreadsheet Export */
           <HistoryView
             history={history}
+            receipts={receipts}
             onDeleteRecord={handleDeleteHistoryRecord}
             onRecordCurrentMatch={handleRequestClosing}
           />
@@ -918,7 +1094,7 @@ export default function App() {
         players={players}
         costPerPerson={costPerPerson}
         initialPlayerId={receiptModalPlayerId}
-        receipts={receipts}
+        receipts={activeReceipts}
         aliasMap={aliasMap}
         onSaveReceipt={handleSaveReceipt}
         onDeleteReceipt={handleDeleteReceipt}

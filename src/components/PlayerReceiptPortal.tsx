@@ -75,7 +75,8 @@ export const PlayerReceiptPortal: React.FC<PlayerReceiptPortalProps> = ({
 
   const handleSelectPlayer = (player: Player) => {
     setSelectedPlayerId(player.id);
-    const due = Math.max(0, costPerPerson - (player.initialBalance || 0) - (player.paidToday || 0));
+    const netPaid = (player.paidToday || 0) - (player.vuelto || 0);
+    const due = Math.max(0, costPerPerson - (player.initialBalance || 0) - netPaid);
     if (due > 0) {
       setAmount(due);
     } else {

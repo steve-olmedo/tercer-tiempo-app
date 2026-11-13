@@ -14,7 +14,11 @@ service cloud.firestore {
         && (!('pendingFondoRecaudador' in data) || data.pendingFondoRecaudador is number)
         && (!('fondoEmi' in data) || data.fondoEmi is number)
         && (!('recaudadorName' in data) || data.recaudadorName is string)
-        && (!('matchTitle' in data) || (data.matchTitle is string && data.matchTitle.size() <= 100));
+        && (!('matchTitle' in data) || (data.matchTitle is string && data.matchTitle.size() <= 100))
+        && (!('currentSessionId' in data) || (data.currentSessionId is string && data.currentSessionId.size() <= 128))
+        && (!('currentSessionDate' in data) || (data.currentSessionDate is string && data.currentSessionDate.size() <= 30))
+        && (!('currentSessionClosed' in data) || data.currentSessionClosed is bool)
+        && (!('lastClosedAt' in data) || data.lastClosedAt is number);
     }
 
     function isValidPlayer(data) {
@@ -38,7 +42,8 @@ service cloud.firestore {
         && data.playedCount is number
         && data.cashTotal is number
         && data.mpTotal is number
-        && data.totalCollected is number;
+        && data.totalCollected is number
+        && (!('sessionId' in data) || (data.sessionId is string && data.sessionId.size() <= 128));
     }
 
     // Public test connection doc

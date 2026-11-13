@@ -39,6 +39,24 @@
           "type": "string",
           "description": "Fecha del partido en formato YYYY-MM-DD",
           "maxLength": 20
+        },
+        "currentSessionId": {
+          "type": "string",
+          "description": "Identificador de la recolección activa",
+          "maxLength": 128
+        },
+        "currentSessionDate": {
+          "type": "string",
+          "description": "Fecha YYYY-MM-DD de inicio de la recolección activa",
+          "maxLength": 30
+        },
+        "currentSessionClosed": {
+          "type": "boolean",
+          "description": "Indica si la recolección activa ya tuvo cierre"
+        },
+        "lastClosedAt": {
+          "type": "number",
+          "description": "Timestamp del último cierre guardado"
         }
       },
       "required": ["pitchCost"]
@@ -98,6 +116,11 @@
       "description": "Foto histórica del cierre financiero de un viernes",
       "type": "object",
       "properties": {
+        "sessionId": {
+          "type": "string",
+          "description": "ID de la recolección cerrada",
+          "maxLength": 128
+        },
         "date": {
           "type": "string",
           "description": "Fecha del cierre",
@@ -172,6 +195,11 @@
       "description": "Comprobante de transferencia de Mercado Pago vinculado a un jugador",
       "type": "object",
       "properties": {
+        "sessionId": {
+          "type": "string",
+          "description": "ID de la recolección / viernes al que pertenece",
+          "maxLength": 128
+        },
         "playerId": {
           "type": "string",
           "description": "ID del jugador al que se acredita"

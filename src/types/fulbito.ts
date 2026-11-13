@@ -2,6 +2,7 @@ export type PaymentMethod = 'efectivo' | 'mercadopago';
 
 export interface MPReceipt {
   id: string;
+  sessionId?: string;          // ID de la recolección / viernes al que pertenece
   playerId: string;            // ID del jugador asignado
   playerName: string;          // Nombre/apodo del jugador al momento del comprobante
   amount: number;              // Monto transferido (ej: $6.900)
@@ -37,6 +38,10 @@ export interface MatchConfig {
   matchTitle: string;          // Título / encabezado del partido
   pitchName: string;           // Nombre de la cancha (ej: "Fútbol 7")
   date: string;                // Fecha del partido
+  currentSessionId?: string;   // ID de la recolección activa de este viernes
+  currentSessionDate?: string; // Fecha YYYY-MM-DD de la recolección activa
+  currentSessionClosed?: boolean; // Si la recolección activa ya tuvo su cierre guardado
+  lastClosedAt?: number;       // Timestamp del último cierre guardado
 }
 
 export type TacticalRole = 'ARQ' | 'DEF_IZQ' | 'DEF_CEN' | 'DEF_DER' | 'MED' | 'DEL_IZQ' | 'DEL_DER';
@@ -81,6 +86,7 @@ export interface PlayerMatchSnapshot {
 
 export interface MatchClosingRecord {
   id: string;
+  sessionId?: string;
   date: string;
   timestamp: number;
   matchTitle: string;

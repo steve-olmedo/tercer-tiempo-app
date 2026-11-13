@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MatchClosingRecord } from '../types/fulbito';
+import { MatchClosingRecord, MPReceipt } from '../types/fulbito';
 import { formatPesos } from '../utils/formatters';
 import { generateMatchCSV, generateGoogleSheetsTSV, downloadCSVFile } from '../utils/csvExport';
 import {
@@ -13,24 +13,27 @@ import {
   Banknote,
   Smartphone,
   Trash2,
-  Users,
   Database,
-  ExternalLink,
+  ZoomIn,
+  X,
 } from 'lucide-react';
 
 interface HistoryViewProps {
   history: MatchClosingRecord[];
+  receipts?: MPReceipt[];
   onDeleteRecord: (id: string) => void;
   onRecordCurrentMatch: () => void;
 }
 
 export const HistoryView: React.FC<HistoryViewProps> = ({
   history,
+  receipts = [],
   onDeleteRecord,
   onRecordCurrentMatch,
 }) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [viewingReceipt, setViewingReceipt] = useState<MPReceipt | null>(null);
 
   const toggleExpand = (id: string) => {
     setExpandedId((prev) => (prev === id ? null : id));
@@ -355,11 +358,122 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                         </tbody>
                       </table>
                     </div>
+
+                    {/* Archived MP Receipts for this closing session */}
+                    {(() => {
+                      const sessionReceipts = record.sessionId
+                        ? receipts.filter(
+                            (r) => (r.sessionId || 'default') === record.sessionId
+                          )
+                        : [];
+                      if (sessionReceipts.length === 0) return null;
+
+                      return (
+                        <div className="mt-4 pt-4 border-t border-zinc-800/80 space-y-2.5">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-semibold text-sky-300 flex items-center gap-1.5">
+                              <Smartphone className="w-3.5 h-3.5" />
+                              <span>
+                                Comprobantes MP de esta fecha ({sessionReceipts.length})
+                              </span>
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                            {sessionReceipts.map((r) => (
+                              <div
+                                key={r.id}
+                                className="p-2.5 rounded-xl bg-zinc-900/70 border border-zinc-800 flex items-center justify-between gap-2.5"
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  {r.imageUrl ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => setViewingReceipt(r)}
+                                      className="relative w-9 h-11 rounded-lg overflow-hidden border border-zinc-700 bg-zinc-950 shrink-0 group"
+                                      title="Ver comprobante"
+                                    >
+                                      <img
+                                        src={r.imageUrl}
+                                        alt="Comprobante"
+                                        className="w-full h-full object-cover"
+                                      />
+                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
+                                        <ZoomIn className="w-3 h-3" />
+                                      </div>
+                                    </button>
+                                  ) : (
+                                    <div className="w-9 h-11 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-500 shrink-0">
+                                      <Smartphone className="w-4 h-4" />
+                                    </div>
+                                  )}
+                                  <div className="min-w-0">
+                                    <div className="text-xs font-bold text-zinc-100 truncate">
+                                      {r.playerName}
+                                    </div>
+                                    <div className="text-[11px] font-mono font-semibold text-emerald-400">
+                                      {formatPesos(r.amount)}
+                                    </div>
+                                    {r.senderName && (
+                                      <div className="text-[10px] text-zinc-500 truncate">
+                                        Titular: {r.senderName}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Lightbox for archived receipt */}
+      {viewingReceipt && (
+        <div
+          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
+          onClick={() => setViewingReceipt(null)}
+        >
+          <div
+            className="relative max-w-lg w-full bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-3 border-b border-zinc-800 flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-bold text-zinc-100">
+                  Comprobante: {viewingReceipt.playerName} ({formatPesos(viewingReceipt.amount)})
+                </h4>
+                {viewingReceipt.senderName && (
+                  <p className="text-[11px] text-zinc-400">
+                    Titular: {viewingReceipt.senderName}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => setViewingReceipt(null)}
+                className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-2 flex-1 overflow-auto flex items-center justify-center bg-black">
+              {viewingReceipt.imageUrl ? (
+                <img
+                  src={viewingReceipt.imageUrl}
+                  alt="Comprobante"
+                  className="max-h-[75vh] w-auto object-contain rounded-lg"
+                />
+              ) : (
+                <p className="text-xs text-zinc-500">Sin imagen adjunta</p>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
